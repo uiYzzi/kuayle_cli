@@ -240,15 +240,6 @@ mod tests {
         assert_eq!(err.exit_code(), 1);
     }
 
-    #[test]
-    fn exit_code_transport_is_7() {
-        // We can't easily construct a reqwest::Error in a unit test,
-        // but we can test that the match arm maps to 7.
-        // 在单元测试中难以构造 reqwest::Error，但可以验证 match arm 映射为 7。
-        // Verified by matching on the Transport variant conceptually.
-        // 通过概念上匹配 Transport 变体验证。
-    }
-
     // ── Error body deserialization ─────────────────────────────────
     // 错误体反序列化
 

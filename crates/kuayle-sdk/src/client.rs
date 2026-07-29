@@ -64,6 +64,13 @@ impl Client {
 
     /// Perform a POST request (no retry for non-idempotent).
     /// 执行 POST 请求（非幂等请求不重试）。
+    ///
+    /// Note: POST/PATCH do NOT retry on 429 or server errors. This is
+    /// a deliberate scope decision — retrying non-idempotent writes
+    /// risks duplicate resource creation. The caller is responsible for
+    /// handling transient failures on mutations.
+    /// 注意：POST/PATCH 不会在 429 或服务端错误时重试。这是有意的范围决策——
+    /// 重试非幂等写操作可能导致重复创建资源。调用方需自行处理变更操作的瞬时失败。
     pub async fn post<B: Serialize, T: DeserializeOwned>(
         &self,
         path: &str,
@@ -213,6 +220,13 @@ impl Client {
 
         if (200..300).contains(&status) {
             let body = resp.text().await.map_err(KuayleError::Transport)?;
+            // Handle 204 No Content — empty body is valid, deserialize as null.
+            // 处理 204 No Content — 空 body 是合法的，反序列化为 null。
+            let body = if body.trim().is_empty() {
+                "null".to_string()
+            } else {
+                body
+            };
             serde_json::from_str(&body).map_err(|e| KuayleError::Api {
                 code: "DESERIALIZE_ERROR".into(),
                 message: format!("failed to parse response: {e}"),
@@ -239,6 +253,12 @@ impl Client {
 ///
 /// Returns seconds as Duration, or None if header is missing or unparseable.
 /// 返回秒数 Duration，如果 header 缺失或无法解析则返回 None。
+///
+/// Note: Only supports delta-seconds (e.g. "120"). HTTP-date format
+/// (`Wed, 21 Oct 2015 07:28:00 GMT`) is not supported — in practice,
+/// kuayle returns delta-seconds.
+/// 注意：仅支持 delta-seconds 格式（如 "120"）。不支持 HTTP-date 格式
+/// （`Wed, 21 Oct 2015 07:28:00 GMT`）——实践中 kuayle 返回 delta-seconds。
 fn parse_retry_after(headers: &reqwest::header::HeaderMap) -> Option<Duration> {
     headers
         .get(reqwest::header::RETRY_AFTER)

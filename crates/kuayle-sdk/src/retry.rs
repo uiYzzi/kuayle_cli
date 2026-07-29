@@ -1,6 +1,7 @@
 // Retry policy for transient failures.
 // 瞬时失败的重试策略。
 
+use rand::Rng;
 use std::time::Duration;
 
 /// Retry configuration for the SDK client.
@@ -40,16 +41,15 @@ impl RetryPolicy {
     /// 使用带 ±20% 抖动的指数退避。
     pub fn backoff(&self, attempt: u32) -> Duration {
         let base = self.base_backoff.as_millis() as u64;
-        let exponential = base * (1u64 << attempt.min(10)); // cap at 2^10 to avoid overflow
+        let exponential = base * (1u64 << attempt.min(10));
         let capped = exponential.min(self.max_backoff.as_millis() as u64);
 
-        // ±20% jitter
-        // ±20% 抖动
+        // ±20% random jitter to avoid thundering herd.
+        // ±20% 随机抖动，避免惊群效应。
         let jitter_range = (capped / 5) as i64;
+        let mut rng = rand::rng();
         let jitter = if jitter_range > 0 {
-            // Deterministic-ish jitter based on attempt for testability.
-            // 基于 attempt 的确定性抖动以便测试。
-            ((attempt as i64 * 17 + 3) % (jitter_range * 2 + 1)) - jitter_range
+            rng.random_range(-jitter_range..=jitter_range)
         } else {
             0
         };
@@ -84,18 +84,27 @@ mod tests {
     #[test]
     fn backoff_increases_with_attempts() {
         let policy = RetryPolicy::default();
-        let d0 = policy.backoff(0);
-        let d1 = policy.backoff(1);
-        let d2 = policy.backoff(2);
-        assert!(d1 > d0, "backoff should increase");
-        assert!(d2 > d1, "backoff should increase");
+        // With random jitter, assert ranges rather than exact ordering.
+        // 使用随机抖动，断言范围而非精确比较。
+        let d0 = policy.backoff(0).as_millis();
+        let d2 = policy.backoff(2).as_millis();
+        // d0 base=500ms, d2 base=2000ms; even with ±20% jitter, d2 should be larger.
+        // d0 基础 500ms，d2 基础 2000ms；即使有 ±20% 抖动，d2 也应该更大。
+        assert!(d2 > d0, "d2={d2} should be > d0={d0}");
     }
 
     #[test]
     fn backoff_capped_at_max() {
         let policy = RetryPolicy::default();
-        let d = policy.backoff(10);
-        assert!(d <= policy.max_backoff);
+        let max_ms = policy.max_backoff.as_millis() as u64;
+        // With jitter, can go up to max + 20%. Assert cap applies.
+        // 有抖动时最多到 max + 20%。断言上限生效。
+        let d = policy.backoff(10).as_millis();
+        let max_with_jitter = max_ms + max_ms / 5;
+        assert!(
+            d <= max_with_jitter as u128,
+            "d={d} > max_with_jitter={max_with_jitter}"
+        );
     }
 
     #[test]

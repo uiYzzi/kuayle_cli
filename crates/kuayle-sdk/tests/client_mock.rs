@@ -267,10 +267,11 @@ async fn error_invalid_json_body_maps_to_api_error() {
         .get::<serde_json::Value>("/api/bad")
         .await
         .unwrap_err();
-    // Should map to NotFound because status is 404, but error code will be "UNKNOWN"
-    // since we can't parse the HTML body.
-    // 应映射为 NotFound（状态码 404），但由于无法解析 HTML body，错误码将是 "UNKNOWN"。
-    assert!(matches!(err, KuayleError::NotFound { .. }) || matches!(err, KuayleError::Api { .. }));
+    // The HTML body can't be parsed as error JSON, so we get Api with code "UNKNOWN".
+    // HTML body 无法解析为错误 JSON，所以得到 code 为 "UNKNOWN" 的 Api。
+    // Status 404 alone doesn't trigger NotFound — the code field drives the mapping.
+    // 单独 status 404 不会触发 NotFound——映射由 code 字段驱动。
+    assert!(matches!(err, KuayleError::Api { code, .. } if code == "UNKNOWN"));
 }
 
 // ── DELETE tests ──────────────────────────────────────────────────
@@ -288,12 +289,11 @@ async fn delete_sends_request() {
         .await;
 
     // DELETE to /api/tokens/:id returns 204 No Content.
-    // We expect an empty object or error.
+    // The client handles empty body by returning serde_json::Value::Null.
+    // DELETE 到 /api/tokens/:id 返回 204 No Content。
+    // 客户端将空 body 处理为 serde_json::Value::Null。
     let result: Result<serde_json::Value, _> = client.delete("/api/tokens/some-id").await;
-    // 204 with no body — serde_json will fail to parse "".
-    // This is expected; production code handles 204 specially later.
-    // 204 无 body — serde_json 解析 "" 会失败。这是预期行为；生产代码稍后特殊处理 204。
-    assert!(result.is_err());
+    assert!(result.is_ok());
 }
 
 // ── URL construction ──────────────────────────────────────────────

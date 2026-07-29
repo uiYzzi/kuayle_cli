@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 /// JWT sessions (future) carry access + refresh tokens with expiry.
 /// 对于 PAT 会话，`token` 是完整的 `kuayle_pat_...` 字符串。
 /// JWT 会话（未来）携带 access + refresh token 及过期时间。
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub enum Session {
     /// Personal Access Token authentication.
     /// 个人访问令牌认证。
@@ -30,6 +30,17 @@ pub enum Session {
         /// 完整的 PAT 字符串（`kuayle_pat_...`）。
         token: String,
     },
+}
+
+impl std::fmt::Debug for Session {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Session::Pat { token } => {
+                let prefix: String = token.chars().take(16).collect();
+                write!(f, "Pat {{ token: \"{prefix}...\" }}")
+            }
+        }
+    }
 }
 
 impl Session {

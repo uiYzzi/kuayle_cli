@@ -62,16 +62,18 @@ impl CredentialStore for FileCredentialStore {
         let path = self.file_path(profile);
         let json = serde_json::to_string_pretty(session).map_err(|e| format!("serialize: {e}"))?;
 
-        // Write with restrictive permissions (0600).
-        // 以严格权限（0600）写入。
-        let mut file = fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
-
+        // Write with restrictive permissions (0600), atomically where supported.
+        // 以严格权限（0600）原子写入（在支持的平台上）。
+        let mut opts = std::fs::OpenOptions::new();
+        opts.write(true).create(true).truncate(true);
         #[cfg(unix)]
         {
-            use std::os::unix::fs::PermissionsExt;
-            file.set_permissions(fs::Permissions::from_mode(0o600))
-                .map_err(|e| format!("set permissions: {e}"))?;
+            use std::os::unix::fs::OpenOptionsExt;
+            opts.mode(0o600);
         }
+        let mut file = opts
+            .open(&path)
+            .map_err(|e| format!("create file: {e}"))?;
 
         file.write_all(json.as_bytes())
             .map_err(|e| format!("write: {e}"))?;
@@ -248,5 +250,20 @@ mod tests {
             store.load("home").unwrap().unwrap().bearer_token(),
             "token_h"
         );
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn file_store_creates_with_0600_permissions() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = TempDir::new().unwrap();
+        let store = FileCredentialStore::at(dir.path().to_path_buf());
+        store.save("work", &Session::pat("tok")).unwrap();
+
+        let meta = std::fs::metadata(dir.path().join("work.json")).unwrap();
+        let mode = meta.permissions().mode();
+        // Only owner should have access (0600 = 0o600).
+        // 仅 owner 应有访问权限（0600 = 0o600）。
+        assert_eq!(mode & 0o777, 0o600, "expected 0o600, got {mode:#o}");
     }
 }

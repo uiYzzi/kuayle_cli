@@ -69,40 +69,36 @@ impl<T: DeserializeOwned + Send + 'static> PaginationStream<T> {
             );
         }
 
-        let fut = async move {
-            client
-                .get(&format!("{path}?{}", query_string(&query)))
-                .await
+        // Build query string using url crate for proper encoding.
+        // 使用 url crate 构建 query string，正确编码。
+        let mut serializer = url::form_urlencoded::Serializer::new(String::new());
+        if let Some(obj) = query.as_object() {
+            for (k, v) in obj {
+                match v {
+                    serde_json::Value::String(s) => {
+                        serializer.append_pair(k, s);
+                    }
+                    serde_json::Value::Number(n) => {
+                        serializer.append_pair(k, &n.to_string());
+                    }
+                    serde_json::Value::Bool(b) => {
+                        serializer.append_pair(k, &b.to_string());
+                    }
+                    _ => {}
+                }
+            }
+        }
+        let query_string = serializer.finish();
+        let full_path = if query_string.is_empty() {
+            path.clone()
+        } else {
+            format!("{path}?{query_string}")
         };
+
+        let fut = async move { client.get(&full_path).await };
 
         self.pending_fetch = Some(Box::pin(fut));
     }
-}
-
-fn query_string(val: &serde_json::Value) -> String {
-    match val.as_object() {
-        Some(obj) => {
-            let pairs: Vec<String> = obj
-                .iter()
-                .filter_map(|(k, v)| match v {
-                    serde_json::Value::String(s) => {
-                        Some(format!("{}={}", url_encode(k), url_encode(s)))
-                    }
-                    serde_json::Value::Number(n) => Some(format!("{}={}", k, n)),
-                    serde_json::Value::Bool(b) => Some(format!("{}={}", k, b)),
-                    _ => None,
-                })
-                .collect();
-            pairs.join("&")
-        }
-        None => String::new(),
-    }
-}
-
-fn url_encode(s: &str) -> String {
-    s.replace(' ', "%20")
-        .replace('&', "%26")
-        .replace('=', "%3D")
 }
 
 impl<T: DeserializeOwned + Send + 'static> Stream for PaginationStream<T> {
@@ -110,7 +106,11 @@ impl<T: DeserializeOwned + Send + 'static> Stream for PaginationStream<T> {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         // SAFETY: We never move `self` out of the Pin; we only access fields mutably.
+        // `dyn Future` stored as `Pin<Box<dyn Future>>` makes the struct `!Unpin`,
+        // so `get_mut()` is unavailable — `get_unchecked_mut()` is the required pattern.
         // 安全：我们不会将 `self` 移出 Pin；只可变访问字段。
+        // `dyn Future` 以 `Pin<Box<dyn Future>>` 存储使结构体变为 `!Unpin`，
+        // 因此 `get_mut()` 不可用 — `get_unchecked_mut()` 是必要的模式。
         let this = unsafe { self.get_unchecked_mut() };
 
         // Return buffered error once.
@@ -142,6 +142,18 @@ impl<T: DeserializeOwned + Send + 'static> Stream for PaginationStream<T> {
                     this.pending_fetch = None;
                     let has_more = response.has_more;
                     this.current_page += 1;
+
+                    // Defense: if has_more=true but data is empty, don't loop forever.
+                    // 防御：若 has_more=true 但 data 为空，防止无限循环。
+                    if has_more && response.data.is_empty() {
+                        this.done = true;
+                        this.error = Some(KuayleError::Api {
+                            code: "PAGINATION_ERROR".into(),
+                            message: "server returned has_more=true with empty page".into(),
+                        });
+                        return Poll::Ready(Some(Err(this.error.take().unwrap())));
+                    }
+
                     this.done = !has_more;
                     this.buffer = response.data.into_iter();
 
