@@ -71,9 +71,7 @@ impl CredentialStore for FileCredentialStore {
             use std::os::unix::fs::OpenOptionsExt;
             opts.mode(0o600);
         }
-        let mut file = opts
-            .open(&path)
-            .map_err(|e| format!("create file: {e}"))?;
+        let mut file = opts.open(&path).map_err(|e| format!("create file: {e}"))?;
 
         file.write_all(json.as_bytes())
             .map_err(|e| format!("write: {e}"))?;
