@@ -56,6 +56,12 @@ impl Client {
         self.base_url.clone()
     }
 
+    /// Access the underlying session (for custom auth in upload/download).
+    /// 访问底层 session（用于 upload/download 的自定义认证）。
+    pub fn session(&self) -> &Arc<RwLock<Session>> {
+        &self.session
+    }
+
     /// Perform a GET request with retry.
     /// 执行带重试的 GET 请求。
     pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, KuayleError> {

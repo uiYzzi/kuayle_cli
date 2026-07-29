@@ -52,6 +52,10 @@ pub enum Command {
         #[command(subcommand)]
         action: TeamAction,
     },
+    Statuses {
+        #[command(subcommand)]
+        action: StatusesAction,
+    },
     Projects {
         #[command(subcommand)]
         action: ProjectAction,
@@ -247,6 +251,13 @@ pub enum TeamAction {
     Read { id: String },
 }
 
+/// Statuses actions: list statuses for a team.
+/// 状态操作：列出团队的状态。
+#[derive(Subcommand, Debug, Clone)]
+pub enum StatusesAction {
+    List { team: String },
+}
+
 /// Project actions: list projects, read a single project.
 /// 项目操作：列出项目、读取单个项目。
 #[derive(Subcommand, Debug, Clone)]
@@ -344,6 +355,8 @@ pub enum NotificationAction {
 /// 附件操作：读取附件信息、上传文件（上传为占位）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum AssetAction {
+    List,
     Read { id: String },
-    Upload,
+    Upload { file: String },
+    Download { id: String, output: Option<String> },
 }

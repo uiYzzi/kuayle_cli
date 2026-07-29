@@ -4,6 +4,7 @@ mod cli;
 mod commands;
 mod config;
 mod creds;
+mod engine;
 mod output;
 mod registry;
 mod resolve;
@@ -38,6 +39,9 @@ async fn main() {
         }
         cli::Command::Teams { action } => {
             commands::teams::handle(action, &cli).await;
+        }
+        cli::Command::Statuses { action } => {
+            commands::statuses::handle(action, &cli).await;
         }
         cli::Command::Projects { action } => {
             commands::projects::handle(action, &cli).await;

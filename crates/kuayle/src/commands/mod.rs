@@ -11,6 +11,7 @@ pub mod members;
 pub mod notifications;
 pub mod projects;
 pub mod relations;
+pub mod statuses;
 pub mod teams;
 pub mod templates;
 pub mod views;
