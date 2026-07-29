@@ -336,3 +336,180 @@ async fn get_workspaces_list() {
     assert_eq!(workspaces.len(), 1);
     assert_eq!(workspaces[0].slug, "acme");
 }
+
+// ── Retry tests ───────────────────────────────────────────────────
+// 重试测试
+
+#[tokio::test]
+async fn retry_on_502_then_succeed() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // First call returns 502, second call returns 200.
+    // 第一次调用返回 502，第二次返回 200。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(502).set_body_json(json!({
+            "error": {"code": "BAD_GATEWAY", "message": "upstream error"}
+        })))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let user: UserResponse = client.get("/api/auth/me").await.unwrap();
+    assert_eq!(user.email, "alice@kuayle.dev");
+}
+
+#[tokio::test]
+async fn retry_on_503_then_succeed() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(503))
+        .up_to_n_times(2)
+        .expect(2)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let user: UserResponse = client.get("/api/auth/me").await.unwrap();
+    assert_eq!(user.email, "alice@kuayle.dev");
+}
+
+#[tokio::test]
+async fn exhaust_retries_on_502_returns_server_error() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // All 4 calls (1 initial + 3 retries) return 502.
+    // 全部 4 次调用（1 次初始 + 3 次重试）都返回 502。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(502).set_body_json(json!({
+            "error": {"code": "BAD_GATEWAY", "message": "upstream error"}
+        })))
+        .expect(4)
+        .mount(&server)
+        .await;
+
+    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    assert!(matches!(err, KuayleError::Server { status: 502, .. }));
+}
+
+#[tokio::test]
+async fn post_does_not_retry() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // POST is non-idempotent, should not retry on 502.
+    // POST 非幂等，不应在 502 时重试。
+    Mock::given(method("POST"))
+        .and(path("/api/auth/login"))
+        .respond_with(ResponseTemplate::new(502).set_body_json(json!({
+            "error": {"code": "BAD_GATEWAY", "message": "upstream error"}
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let body = json!({"email": "a@b.com", "password": "secret123456"});
+    let err: KuayleError = client
+        .post::<_, serde_json::Value>("/api/auth/login", &body)
+        .await
+        .unwrap_err();
+    assert!(matches!(err, KuayleError::Server { status: 502, .. }));
+}
+
+#[tokio::test]
+async fn rate_limit_429_with_retry_after() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // First call returns 429 with Retry-After: 0 (instant for test).
+    // Second call succeeds.
+    // 第一次调用返回 429 带 Retry-After: 0（测试中瞬时），第二次成功。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .set_body_json(json!({
+                    "error": {"code": "RATE_LIMITED", "message": "too many requests"}
+                }))
+                .insert_header("Retry-After", "0"),
+        )
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let user: UserResponse = client.get("/api/auth/me").await.unwrap();
+    assert_eq!(user.email, "alice@kuayle.dev");
+}
+
+#[tokio::test]
+async fn rate_limit_exhausted_returns_rate_limited_error() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // All calls return 429 (1 initial + 2 rate-limit retries = 3 total).
+    // 所有调用返回 429（1 初始 + 2 限流重试 = 3 次）。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(
+            ResponseTemplate::new(429)
+                .set_body_json(json!({
+                    "error": {"code": "RATE_LIMITED", "message": "too many requests"}
+                }))
+                .insert_header("Retry-After", "0"),
+        )
+        .expect(3)
+        .mount(&server)
+        .await;
+
+    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    assert!(matches!(err, KuayleError::RateLimited { .. }));
+    assert_eq!(err.exit_code(), 6);
+}
+
+#[tokio::test]
+async fn non_retryable_500_does_not_retry() {
+    let server = MockServer::start().await;
+    let client = test_client(&server).await;
+
+    // 500 is not in the retryable set (502/503/504 only).
+    // 500 不在可重试集合内（仅 502/503/504）。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(500).set_body_json(json!({
+            "error": {"code": "INTERNAL_ERROR", "message": "boom"}
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    assert!(matches!(err, KuayleError::Server { status: 500, .. }));
+}

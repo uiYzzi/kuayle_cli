@@ -3,5 +3,6 @@
 pub mod client;
 pub mod error;
 pub mod paginate;
+pub mod retry;
 pub mod session;
 pub mod types;
