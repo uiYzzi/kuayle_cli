@@ -5,6 +5,7 @@ mod commands;
 mod config;
 mod creds;
 mod output;
+mod registry;
 mod resolve;
 
 use clap::Parser;

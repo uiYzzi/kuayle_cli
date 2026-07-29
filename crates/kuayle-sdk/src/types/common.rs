@@ -3,6 +3,15 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Nested progress counters shared by Project and Cycle responses.
+/// Project 和 Cycle 响应共享的嵌套进度计数。
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct ProgressInfo {
+    pub total: u64,
+    pub completed: u64,
+    pub cancelled: u64,
+}
+
 /// Unified paginated list response from kuayle.
 /// kuayle 的统一分页列表响应。
 ///

@@ -25,6 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 url = "2"
 anyhow = "1"
 futures-util = "0.3"
+bitflags = "2"
 
 [dev-dependencies]
 assert_cmd = "2"
