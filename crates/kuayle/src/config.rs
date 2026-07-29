@@ -82,6 +82,12 @@ impl Config {
         toml::from_str(&content).map_err(|e| format!("parse config: {e}"))
     }
 
+    /// Load config from default path, falling back to default on any error.
+    /// 从默认路径加载配置，任何错误时回退到默认值。
+    pub fn load_or_default() -> Self {
+        Self::load().unwrap_or_default()
+    }
+
     /// Resolve the effective profile name.
     /// 解析生效的 profile 名称。
     ///

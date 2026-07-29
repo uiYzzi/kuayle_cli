@@ -71,7 +71,7 @@ async fn cmd_login(cli: &Cli, token: Option<&str>) {
                 }
             };
 
-            let profile = Config::default().resolve_profile(cli.profile.as_deref());
+            let profile = Config::load_or_default().resolve_profile(cli.profile.as_deref());
             let session = kuayle_sdk::session::Session::pat(&token);
 
             if let Err(e) = store.save(&profile, &session) {
@@ -102,7 +102,7 @@ async fn cmd_login(cli: &Cli, token: Option<&str>) {
 // ── logout ────────────────────────────────────────────────────────
 
 fn cmd_logout(cli: &Cli) {
-    let config = Config::default();
+    let config = Config::load_or_default();
     let profile = config.resolve_profile(cli.profile.as_deref());
 
     let store = match creds::get_credential_store() {
@@ -127,7 +127,7 @@ fn cmd_logout(cli: &Cli) {
 // ── status ────────────────────────────────────────────────────────
 
 async fn cmd_status(cli: &Cli) {
-    let config = Config::default();
+    let config = Config::load_or_default();
     let profile = config.resolve_profile(cli.profile.as_deref());
 
     let store = match creds::get_credential_store() {
@@ -238,7 +238,7 @@ async fn cmd_whoami(cli: &Cli) {
 /// Resolve a Client from current config and stored credentials.
 /// 从当前配置和已存储凭据解析 Client。
 async fn resolve_client(cli: &Cli) -> Result<(Client, String), String> {
-    let config = Config::default();
+    let config = Config::load_or_default();
     let resolved = config
         .resolve(cli.profile.as_deref(), cli.url.as_deref(), None)
         .map_err(|e| format!("config: {e}"))?;

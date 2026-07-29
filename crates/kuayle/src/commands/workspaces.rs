@@ -71,7 +71,7 @@ async fn cmd_list(cli: &Cli) {
 /// Resolve a Client from current config and stored credentials.
 /// 从当前配置和已存储凭据解析 Client。
 async fn resolve_client(cli: &Cli) -> Result<Client, String> {
-    let config = crate::config::Config::default();
+    let config = crate::config::Config::load_or_default();
     let resolved = config
         .resolve(cli.profile.as_deref(), cli.url.as_deref(), None)
         .map_err(|e| format!("config: {e}"))?;

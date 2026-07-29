@@ -432,3 +432,81 @@ async fn workspaces_list_empty() {
         .success()
         .stdout(predicate::str::contains("No workspaces found"));
 }
+
+// ── config.toml profile resolution ────────────────────────────────
+// config.toml profile 解析
+
+#[tokio::test]
+async fn workspaces_list_uses_config_toml_url() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Write config.toml with a profile pointing to the mock server.
+    // 写入 config.toml，含指向 mock server 的 profile。
+    let config_path = home.path().join(".config").join("kuayle").join("config.toml");
+    std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+    std::fs::write(
+        &config_path,
+        format!(
+            r#"
+default_profile = "test"
+
+[profiles.test]
+url = "{}"
+workspace = "acme"
+"#,
+            server.uri()
+        ),
+    )
+    .unwrap();
+
+    // Login to store credentials.
+    // 登录以存储凭据。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    // workspaces list — WITHOUT KUAYLE_URL env, relying on config.toml.
+    // workspaces list — 不设 KUAYLE_URL 环境变量，依赖 config.toml。
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {
+                "id": "w1",
+                "name": "Acme",
+                "slug": "acme",
+                "logo_url": null,
+                "owner_id": "u1",
+                "owner": {
+                    "id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null
+                },
+                "share_link_min_role": "admin",
+                "current_user_role": "owner",
+                "created_at": "2026-07-28T15:58:38+08:00",
+                "updated_at": "2026-07-28T15:58:38+08:00"
+            }
+        ])))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // No KUAYLE_URL; relies on config.toml profile.
+    // 无 KUAYLE_URL；依赖 config.toml profile。
+    let mut cmd = Command::cargo_bin("kuayle").unwrap();
+    cmd.env("HOME", home.path())
+        .env("KUAYLE_CREDENTIAL_STORE", "file")
+        .args(["workspaces", "list", "--format", "human"]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Acme"))
+        .stdout(predicate::str::contains("acme"));
+}
