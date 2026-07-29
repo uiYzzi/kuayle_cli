@@ -3,79 +3,193 @@
 
 use clap::{Parser, Subcommand};
 
-/// kuayle — CLI for the kuayle self-hosted issue tracker
-/// kuayle — 自托管 issue tracker kuayle 的命令行工具
 #[derive(Parser, Debug)]
 #[command(name = "kuayle", version, about, long_about = None)]
 pub struct Cli {
-    /// Profile name to use
-    /// 要使用的 profile 名称
     #[arg(long, global = true, env = "KUAYLE_PROFILE")]
     pub profile: Option<String>,
-
-    /// Override the kuayle instance URL
-    /// 覆盖 kuayle 实例 URL
     #[arg(long, global = true, env = "KUAYLE_URL")]
     pub url: Option<String>,
-
-    /// Override the default workspace slug
-    /// 覆盖默认工作区 slug
     #[arg(long, global = true, env = "KUAYLE_WORKSPACE")]
     pub workspace: Option<String>,
-
-    /// Output format: human, json, or auto (detect tty)
-    /// 输出格式：human、json 或 auto（检测 tty）
     #[arg(long, global = true, default_value = "auto")]
     pub format: String,
-
     #[command(subcommand)]
     pub command: Command,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum Command {
-    /// Authenticate with a kuayle instance (login, logout, status)
-    /// 认证 kuayle 实例（login、logout、status）
     Auth {
         #[command(subcommand)]
         action: AuthAction,
     },
-
-    /// Show the authenticated user's profile
-    /// 显示已认证用户的个人资料
     Whoami,
-
-    /// Manage workspaces
-    /// 管理工作区
     Workspaces {
         #[command(subcommand)]
         action: WorkspaceAction,
     },
+    Issues {
+        #[command(subcommand)]
+        action: IssueAction,
+    },
+    Comments {
+        #[command(subcommand)]
+        action: CommentAction,
+    },
+    Relations {
+        #[command(subcommand)]
+        action: RelationAction,
+    },
+    Labels {
+        #[command(subcommand)]
+        action: LabelAction,
+    },
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum AuthAction {
-    /// Log in to a kuayle instance
-    /// 登录 kuayle 实例
     Login {
-        /// Personal Access Token (kuayle_pat_...)
-        /// 个人访问令牌（kuayle_pat_...）
         #[arg(long)]
         token: Option<String>,
     },
-
-    /// Log out and remove stored credentials
-    /// 登出并移除存储的凭据
     Logout,
-
-    /// Show authentication status
-    /// 显示认证状态
     Status,
 }
 
-#[derive(Subcommand, Debug)]
+#[derive(Subcommand, Debug, Clone)]
 pub enum WorkspaceAction {
-    /// List workspaces
-    /// 列出工作区
     List,
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum IssueAction {
+    List {
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        assignee: Option<String>,
+        #[arg(long)]
+        label: Option<String>,
+        #[arg(long)]
+        search: Option<String>,
+        #[arg(long)]
+        all: bool,
+    },
+    Read {
+        identifier: String,
+    },
+    Create {
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        team: Option<String>,
+        #[arg(long)]
+        assignee: Option<Vec<String>>,
+        #[arg(long)]
+        labels: Option<Vec<String>>,
+        #[arg(long)]
+        project: Option<String>,
+        #[arg(long)]
+        cycle: Option<String>,
+    },
+    Update {
+        identifier: String,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+        #[arg(long)]
+        assignee: Option<Vec<String>>,
+        #[arg(long)]
+        labels: Option<Vec<String>>,
+    },
+    Delete {
+        identifier: String,
+    },
+    BatchUpdate {
+        identifiers: Vec<String>,
+        #[arg(long)]
+        status: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
+    },
+    BatchDelete {
+        identifiers: Vec<String>,
+    },
+    Subscribe {
+        identifier: String,
+    },
+    Unsubscribe {
+        identifier: String,
+    },
+    History {
+        identifier: String,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum CommentAction {
+    List {
+        issue: String,
+    },
+    Create {
+        issue: String,
+        #[arg(long)]
+        body: String,
+    },
+    Resolve {
+        id: String,
+    },
+    Reopen {
+        id: String,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum RelationAction {
+    List {
+        issue: String,
+    },
+    Create {
+        issue: String,
+        #[arg(long)]
+        related: String,
+        #[arg(long, default_value = "related")]
+        r#type: String,
+    },
+    Delete {
+        id: String,
+    },
+}
+
+#[derive(Subcommand, Debug, Clone)]
+pub enum LabelAction {
+    List,
+    Create {
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        color: Option<String>,
+    },
+    Update {
+        id: String,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        color: Option<String>,
+    },
+    Delete {
+        id: String,
+    },
 }

@@ -184,19 +184,13 @@ pub struct UpdateIssueRequest {
 
 /// Serialize `Option<Option<T>>` for clearable fields.
 /// 序列化可清空字段的 `Option<Option<T>>`。
-fn serialize_clearable<S>(
-    val: &Option<Option<String>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
+fn serialize_clearable<S>(val: &Option<Option<String>>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,
 {
     match val {
-        None => serializer.serialize_none(),
-        Some(inner) => match inner {
-            Some(s) => serializer.serialize_some(s),
-            None => serializer.serialize_none(), // explicitly clearing
-        },
+        None | Some(None) => serializer.serialize_none(),
+        Some(Some(s)) => serializer.serialize_some(s),
     }
 }
 

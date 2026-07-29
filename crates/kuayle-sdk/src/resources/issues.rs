@@ -38,25 +38,19 @@ impl Issues {
         filter: IssueFilter,
     ) -> impl Stream<Item = Result<IssueResponse, KuayleError>> + '_ {
         let path = self.path("");
-        let query_value =
-            serde_json::to_value(&filter).unwrap_or_default();
+        let query_value = serde_json::to_value(&filter).unwrap_or_default();
         self.client.paginate_raw(&path, query_value)
     }
 
     /// Read a single issue by identifier (e.g. "ENG-25") or UUID.
     /// 通过 identifier（如 "ENG-25"）或 UUID 读取单个 issue。
     pub async fn read(&self, identifier: &str) -> Result<IssueResponse, KuayleError> {
-        self.client
-            .get(&self.path(&format!("/{identifier}")))
-            .await
+        self.client.get(&self.path(&format!("/{identifier}"))).await
     }
 
     /// Create a new issue.
     /// 创建新 issue。
-    pub async fn create(
-        &self,
-        req: &CreateIssueRequest,
-    ) -> Result<IssueResponse, KuayleError> {
+    pub async fn create(&self, req: &CreateIssueRequest) -> Result<IssueResponse, KuayleError> {
         self.client.post(&self.path(""), req).await
     }
 
@@ -101,10 +95,7 @@ impl Issues {
 
     /// Subscribe to an issue.
     /// 订阅 issue。
-    pub async fn subscribe(
-        &self,
-        identifier: &str,
-    ) -> Result<serde_json::Value, KuayleError> {
+    pub async fn subscribe(&self, identifier: &str) -> Result<serde_json::Value, KuayleError> {
         self.client
             .post(
                 &self.path(&format!("/{identifier}/subscribe")),
@@ -115,10 +106,7 @@ impl Issues {
 
     /// Unsubscribe from an issue.
     /// 取消订阅 issue。
-    pub async fn unsubscribe(
-        &self,
-        identifier: &str,
-    ) -> Result<serde_json::Value, KuayleError> {
+    pub async fn unsubscribe(&self, identifier: &str) -> Result<serde_json::Value, KuayleError> {
         self.client
             .post(
                 &self.path(&format!("/{identifier}/unsubscribe")),
@@ -129,10 +117,7 @@ impl Issues {
 
     /// Get issue history (activity log).
     /// 获取 issue 历史（活动日志）。
-    pub async fn history(
-        &self,
-        identifier: &str,
-    ) -> Result<serde_json::Value, KuayleError> {
+    pub async fn history(&self, identifier: &str) -> Result<serde_json::Value, KuayleError> {
         self.client
             .get(&self.path(&format!("/{identifier}/history")))
             .await
@@ -145,16 +130,12 @@ impl Issues {
         identifier: &str,
     ) -> impl Stream<Item = Result<CommentResponse, KuayleError>> + '_ {
         let path = self.path(&format!("/{identifier}/comments"));
-        self.client
-            .paginate_raw(&path, serde_json::json!({}))
+        self.client.paginate_raw(&path, serde_json::json!({}))
     }
 
     /// List relations on an issue.
     /// 列出 issue 的关系。
-    pub async fn relations(
-        &self,
-        identifier: &str,
-    ) -> Result<Vec<RelationResponse>, KuayleError> {
+    pub async fn relations(&self, identifier: &str) -> Result<Vec<RelationResponse>, KuayleError> {
         self.client
             .get(&self.path(&format!("/{identifier}/relations")))
             .await
@@ -167,7 +148,6 @@ impl Issues {
         identifier: &str,
     ) -> impl Stream<Item = Result<IssueResponse, KuayleError>> + '_ {
         let path = self.path(&format!("/{identifier}/sub-issues"));
-        self.client
-            .paginate_raw(&path, serde_json::json!({}))
+        self.client.paginate_raw(&path, serde_json::json!({}))
     }
 }

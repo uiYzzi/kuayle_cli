@@ -22,5 +22,17 @@ async fn main() {
         cli::Command::Workspaces { action } => {
             commands::workspaces::handle(action, &cli).await;
         }
+        cli::Command::Issues { action } => {
+            commands::issues::handle(action, &cli).await;
+        }
+        cli::Command::Comments { action } => {
+            commands::comments::handle(action, &cli).await;
+        }
+        cli::Command::Relations { action } => {
+            commands::relations::handle(action, &cli).await;
+        }
+        cli::Command::Labels { action } => {
+            commands::labels::handle(action, &cli).await;
+        }
     }
 }
