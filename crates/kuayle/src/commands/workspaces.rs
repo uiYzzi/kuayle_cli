@@ -6,6 +6,7 @@ use kuayle_sdk::types::workspace::WorkspaceResponse;
 use url::Url;
 
 use crate::cli::{Cli, WorkspaceAction};
+use crate::output::{self, is_json_output};
 
 /// Handle workspace subcommand dispatch.
 /// 处理 workspace 子命令分发。
@@ -16,13 +17,10 @@ pub async fn handle(action: &WorkspaceAction, cli: &Cli) {
 }
 
 async fn cmd_list(cli: &Cli) {
+    let is_json = is_json_output(cli);
     let client = match resolve_client(cli).await {
         Ok(c) => c,
-        Err(e) => {
-            eprintln!("Error: {e}");
-            eprintln!("错误：{e}");
-            std::process::exit(2);
-        }
+        Err(e) => output::print_string_error(&e, 2, is_json),
     };
 
     match client
@@ -30,7 +28,7 @@ async fn cmd_list(cli: &Cli) {
         .await
     {
         Ok(workspaces) => {
-            if is_json_output(cli) {
+            if is_json {
                 println!(
                     "{}",
                     serde_json::to_string_pretty(&workspaces).unwrap_or_default()
@@ -41,8 +39,6 @@ async fn cmd_list(cli: &Cli) {
                     println!("没有找到工作区。");
                     return;
                 }
-                // Human table output.
-                // 人类可读表格输出。
                 println!("{:<40} {:<20} {:<15}", "NAME", "SLUG", "ROLE");
                 println!("{:-<40} {:-<20} {:-<15}", "", "", "");
                 for ws in &workspaces {
@@ -55,15 +51,12 @@ async fn cmd_list(cli: &Cli) {
             }
         }
         Err(e) => {
-            eprintln!("Error: {e}");
-            eprintln!("错误：{e}");
+            output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
         }
     }
 }
 
-/// Resolve a Client from current config and stored credentials.
-/// 从当前配置和已存储凭据解析 Client。
 async fn resolve_client(cli: &Cli) -> Result<Client, String> {
     let config = crate::config::Config::load_or_default();
     let resolved = config
@@ -80,12 +73,4 @@ async fn resolve_client(cli: &Cli) -> Result<Client, String> {
 
     let base_url = Url::parse(&resolved.url).map_err(|e| format!("invalid URL: {e}"))?;
     Ok(Client::new(base_url, session.bearer_token().to_string()))
-}
-
-fn is_json_output(cli: &Cli) -> bool {
-    match cli.format.as_str() {
-        "json" => true,
-        "human" => false,
-        _ => !std::io::IsTerminal::is_terminal(&std::io::stdout()),
-    }
 }

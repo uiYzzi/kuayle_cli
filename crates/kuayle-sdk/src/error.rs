@@ -5,13 +5,13 @@
 // on failure modes without parsing human-readable text.
 // 结构化错误，带语义退出码，agent 无需解析人类可读文本即可分支处理失败模式。
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use thiserror::Error;
 
 /// A single field-level validation error from the kuayle API.
 /// kuayle API 返回的单个字段级校验错误。
-#[derive(Debug, Clone, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct FieldError {
     pub field: String,
     pub message: String,
@@ -133,6 +133,49 @@ impl KuayleError {
             KuayleError::Api { .. } => 1,
             KuayleError::Transport(_) => 7,
         }
+    }
+
+    /// Machine-readable error kind (snake_case).
+    /// 机器可读的错误类别（snake_case）。
+    pub fn kind(&self) -> &'static str {
+        match self {
+            KuayleError::Authentication { .. } => "authentication",
+            KuayleError::Forbidden { .. } => "forbidden",
+            KuayleError::NotFound { .. } => "not_found",
+            KuayleError::Validation { .. } => "validation",
+            KuayleError::RateLimited { .. } => "rate_limited",
+            KuayleError::Server { .. } => "server_error",
+            KuayleError::Api { .. } => "api_error",
+            KuayleError::Transport(_) => "transport_error",
+        }
+    }
+
+    /// Serialize as the JSON error envelope for `--format json`.
+    /// 序列化为 `--format json` 的 JSON 错误信封。
+    ///
+    /// Output: `{"error": {"kind": "...", "message": "..."}}`
+    /// 输出：`{"error": {"kind": "...", "message": "..."}}`
+    pub fn to_json_error(&self) -> String {
+        let kind = self.kind();
+        let message = self.to_string();
+        let details: Option<&[FieldError]> = match self {
+            KuayleError::Validation { details } if !details.is_empty() => Some(details),
+            _ => None,
+        };
+
+        let mut obj = serde_json::json!({
+            "error": {
+                "kind": kind,
+                "message": message,
+            }
+        });
+
+        if let Some(d) = details {
+            obj["error"]["details"] = serde_json::to_value(d).unwrap_or_default();
+        }
+
+        serde_json::to_string(&obj)
+            .unwrap_or_else(|_| format!(r#"{{"error":{{"kind":"{kind}","message":"{message}"}}}}"#))
     }
 }
 
@@ -363,5 +406,77 @@ mod tests {
             message: "Issue KUA-99 not found".into(),
         };
         assert!(err.to_string().contains("KUA-99"));
+    }
+
+    // ── kind() and to_json_error() ─────────────────────────────────
+
+    #[test]
+    fn kind_authentication() {
+        let err = KuayleError::Authentication {
+            message: "x".into(),
+        };
+        assert_eq!(err.kind(), "authentication");
+    }
+
+    #[test]
+    fn kind_forbidden() {
+        let err = KuayleError::Forbidden {
+            message: "x".into(),
+        };
+        assert_eq!(err.kind(), "forbidden");
+    }
+
+    #[test]
+    fn kind_not_found() {
+        let err = KuayleError::NotFound {
+            message: "x".into(),
+        };
+        assert_eq!(err.kind(), "not_found");
+    }
+
+    #[test]
+    fn kind_validation() {
+        let err = KuayleError::Validation { details: vec![] };
+        assert_eq!(err.kind(), "validation");
+    }
+
+    #[test]
+    fn kind_rate_limited() {
+        let err = KuayleError::RateLimited { retry_after: None };
+        assert_eq!(err.kind(), "rate_limited");
+    }
+
+    #[test]
+    fn to_json_error_contains_kind_and_message() {
+        let err = KuayleError::Authentication {
+            message: "bad token".into(),
+        };
+        let json = err.to_json_error();
+        assert!(json.contains(r#""kind":"authentication""#));
+        assert!(json.contains("bad token"));
+    }
+
+    #[test]
+    fn to_json_error_validation_includes_details() {
+        let err = KuayleError::Validation {
+            details: vec![FieldError {
+                field: "title".into(),
+                message: "required".into(),
+            }],
+        };
+        let json = err.to_json_error();
+        assert!(json.contains(r#""kind":"validation""#));
+        assert!(json.contains("title"));
+        assert!(json.contains("required"));
+    }
+
+    #[test]
+    fn to_json_error_is_valid_json() {
+        let err = KuayleError::NotFound {
+            message: "gone".into(),
+        };
+        let json = err.to_json_error();
+        let parsed: serde_json::Value = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed["error"]["kind"], "not_found");
     }
 }

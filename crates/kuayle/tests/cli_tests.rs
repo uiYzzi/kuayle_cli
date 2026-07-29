@@ -52,7 +52,9 @@ fn auth_status_not_logged_in() {
     cmd.env("HOME", home.path())
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("auth")
-        .arg("status");
+        .arg("status")
+        .arg("--format")
+        .arg("human");
 
     cmd.assert()
         .failure()
@@ -487,4 +489,55 @@ workspace = "acme"
         .success()
         .stdout(predicate::str::contains("Acme"))
         .stdout(predicate::str::contains("acme"));
+}
+
+// ── JSON error output ─────────────────────────────────────────────
+
+#[tokio::test]
+async fn json_error_output_on_auth_failure() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login first so there's a session, then whoami returns 401.
+    // 先登录获取会话，然后 whoami 返回 401。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    // Now whoami with --format json, but the API returns 401.
+    // 现在 whoami --format json，但 API 返回 401。
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "bad token"
+            }
+        })))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = Command::cargo_bin("kuayle").unwrap();
+    cmd.env("HOME", home.path())
+        .env("KUAYLE_CREDENTIAL_STORE", "file")
+        .env("KUAYLE_URL", server.uri())
+        .args(["whoami", "--format", "json"]);
+
+    let output = cmd.assert().failure().code(predicate::eq(2));
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(parsed["error"]["kind"], "authentication");
+    assert!(parsed["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("bad token"));
 }

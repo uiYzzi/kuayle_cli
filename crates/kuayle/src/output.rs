@@ -1,13 +1,13 @@
 // Output formatting: human / JSON with tty auto-detection.
 // 输出格式化：human / JSON，带 tty 自动检测。
 #![allow(dead_code)] // Wired in item #8
-//
-// In human mode, output is designed for terminal display.
-// In JSON mode, output is machine-readable.
-// Auto mode detects whether stdout is a terminal.
-// human 模式下输出专为终端显示设计。
-// JSON 模式下输出为机器可读。
-// auto 模式检测 stdout 是否为终端。
+                     //
+                     // In human mode, output is designed for terminal display.
+                     // In JSON mode, output is machine-readable.
+                     // Auto mode detects whether stdout is a terminal.
+                     // human 模式下输出专为终端显示设计。
+                     // JSON 模式下输出为机器可读。
+                     // auto 模式检测 stdout 是否为终端。
 
 use serde::Serialize;
 
@@ -27,9 +27,6 @@ pub enum Format {
 impl Format {
     /// Determine the output format from a CLI flag and tty status.
     /// 根据 CLI flag 和 tty 状态确定输出格式。
-    ///
-    /// `"human"` → Human, `"json"` → Json, anything else → auto-detect tty.
-    /// `"human"` → Human，`"json"` → Json，其余 → 自动检测 tty。
     pub fn from_flag(flag: &str) -> Self {
         match flag {
             "human" => Format::Human,
@@ -44,8 +41,6 @@ impl Format {
         }
     }
 
-    /// Whether the format is JSON.
-    /// 格式是否为 JSON。
     pub fn is_json(self) -> bool {
         matches!(self, Format::Json)
     }
@@ -53,25 +48,11 @@ impl Format {
 
 /// Print a single value in the specified format.
 /// 以指定格式打印单个值。
-pub fn print_one<T: Serialize>(format: Format, value: &T) {
-    match format {
-        Format::Json => {
-            println!(
-                "{}",
-                serde_json::to_string_pretty(value).unwrap_or_default()
-            );
-        }
-        Format::Human => {
-            // For unstructured printing, just serialize as pretty JSON for now.
-            // In the future, this will have resource-specific detail views.
-            // 对于非结构化打印，暂时序列化为 pretty JSON。
-            // 未来将支持资源特定的详情视图。
-            println!(
-                "{}",
-                serde_json::to_string_pretty(value).unwrap_or_default()
-            );
-        }
-    }
+pub fn print_one<T: Serialize>(_format: Format, value: &T) {
+    println!(
+        "{}",
+        serde_json::to_string_pretty(value).unwrap_or_default()
+    );
 }
 
 /// Print a list of values as a table (human) or JSON array (json).
@@ -96,8 +77,6 @@ pub fn print_table<T: Serialize>(
                 return;
             }
 
-            // Calculate column widths.
-            // 计算列宽。
             let mut widths: Vec<usize> = headers.iter().map(|h| h.len()).collect();
             for item in items {
                 let row = row_fn(item);
@@ -108,8 +87,6 @@ pub fn print_table<T: Serialize>(
                 }
             }
 
-            // Print header.
-            // 打印表头。
             let header_line: Vec<String> = headers
                 .iter()
                 .enumerate()
@@ -117,13 +94,9 @@ pub fn print_table<T: Serialize>(
                 .collect();
             println!("{}", header_line.join("  "));
 
-            // Print separator.
-            // 打印分隔线。
             let sep: Vec<String> = widths.iter().map(|w| "-".repeat(*w)).collect();
             println!("{}", sep.join("  "));
 
-            // Print rows.
-            // 打印行。
             for item in items {
                 let row = row_fn(item);
                 let line: Vec<String> = row
@@ -136,6 +109,42 @@ pub fn print_table<T: Serialize>(
 
             println!("\n{} item(s)", items.len());
         }
+    }
+}
+
+/// Print a `KuayleError` respecting the output format.
+/// 按输出格式打印 `KuayleError`。
+pub fn print_error(err: &kuayle_sdk::error::KuayleError, is_json: bool) {
+    if is_json {
+        println!("{}", err.to_json_error());
+    } else {
+        eprintln!("Error: {err}");
+        eprintln!("错误：{err}");
+    }
+}
+
+/// Print an error string to stdout (JSON) or stderr (human), then exit.
+/// 将错误字符串打印到 stdout（JSON）或 stderr（human），然后退出。
+pub fn print_string_error(msg: &str, exit_code: i32, is_json: bool) -> ! {
+    if is_json {
+        println!(
+            r#"{{"error":{{"kind":"cli_error","message":"{}"}}}}"#,
+            msg.replace('"', r#"\""#)
+        );
+    } else {
+        eprintln!("Error: {msg}");
+        eprintln!("错误：{msg}");
+    }
+    std::process::exit(exit_code);
+}
+
+/// Determine whether JSON output is requested from the CLI flags.
+/// 根据 CLI flags 确定是否请求 JSON 输出。
+pub fn is_json_output(cli: &crate::cli::Cli) -> bool {
+    match cli.format.as_str() {
+        "json" => true,
+        "human" => false,
+        _ => !std::io::IsTerminal::is_terminal(&std::io::stdout()),
     }
 }
 
