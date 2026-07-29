@@ -77,10 +77,7 @@ async fn auth_login_with_token_succeeds() {
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_test123",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
 
     cmd.assert()
         .success()
@@ -94,27 +91,20 @@ async fn auth_login_with_invalid_token_fails() {
 
     Mock::given(method("GET"))
         .and(path("/api/auth/me"))
-        .respond_with(
-            ResponseTemplate::new(401).set_body_json(json!({
-                "error": {
-                    "code": "UNAUTHORIZED",
-                    "message": "Authentication required"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Authentication required"
+            }
+        })))
         .expect(1)
         .mount(&server)
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_bad_token",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_bad_token"]);
 
-    cmd.assert()
-        .failure()
-        .code(predicate::eq(2));
+    cmd.assert().failure().code(predicate::eq(2));
 }
 
 // ── auth status with session ──────────────────────────────────────
@@ -135,10 +125,7 @@ async fn auth_status_after_login() {
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_test123",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
     cmd.assert().success();
 
     // Now check status — needs another mock for the status check.
@@ -176,10 +163,7 @@ async fn auth_logout_removes_session() {
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_test123",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
     cmd.assert().success();
 
     // Logout.
@@ -195,9 +179,7 @@ async fn auth_logout_removes_session() {
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("auth")
         .arg("status");
-    cmd.assert()
-        .failure()
-        .code(predicate::eq(2));
+    cmd.assert().failure().code(predicate::eq(2));
 }
 
 // ── whoami ────────────────────────────────────────────────────────
@@ -217,10 +199,7 @@ async fn whoami_shows_user_info() {
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_test123",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
     cmd.assert().success();
 
     // whoami
@@ -249,9 +228,7 @@ async fn whoami_not_logged_in_fails() {
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("whoami");
 
-    cmd.assert()
-        .failure()
-        .code(predicate::eq(2));
+    cmd.assert().failure().code(predicate::eq(2));
 }
 
 // ── JSON output ───────────────────────────────────────────────────
@@ -271,10 +248,7 @@ async fn whoami_json_output() {
         .await;
 
     let mut cmd = kuayle_cmd(&home, &server.uri());
-    cmd.args([
-        "auth", "login",
-        "--token", "kuayle_pat_test123",
-    ]);
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
     cmd.assert().success();
 
     // whoami --format json
@@ -443,7 +417,11 @@ async fn workspaces_list_uses_config_toml_url() {
 
     // Write config.toml with a profile pointing to the mock server.
     // 写入 config.toml，含指向 mock server 的 profile。
-    let config_path = home.path().join(".config").join("kuayle").join("config.toml");
+    let config_path = home
+        .path()
+        .join(".config")
+        .join("kuayle")
+        .join("config.toml");
     std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
     std::fs::write(
         &config_path,

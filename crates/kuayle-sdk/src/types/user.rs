@@ -82,7 +82,10 @@ mod tests {
             "is_sysadmin": false
         }"#;
         let user: UserResponse = serde_json::from_str(json).unwrap();
-        assert_eq!(user.avatar_url.as_deref(), Some("https://example.com/avatar.png"));
+        assert_eq!(
+            user.avatar_url.as_deref(),
+            Some("https://example.com/avatar.png")
+        );
         assert!(!user.is_sysadmin);
     }
 

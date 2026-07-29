@@ -110,18 +110,19 @@ async fn error_401_unauthorized_maps_to_authentication() {
 
     Mock::given(method("GET"))
         .and(path("/api/auth/me"))
-        .respond_with(
-            ResponseTemplate::new(401).set_body_json(json!({
-                "error": {
-                    "code": "UNAUTHORIZED",
-                    "message": "Authentication required"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "Authentication required"
+            }
+        })))
         .mount(&server)
         .await;
 
-    let err = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    let err = client
+        .get::<UserResponse>("/api/auth/me")
+        .await
+        .unwrap_err();
     assert!(matches!(err, KuayleError::Authentication { .. }));
     assert_eq!(err.exit_code(), 2);
 }
@@ -133,14 +134,12 @@ async fn error_403_forbidden_maps_to_forbidden() {
 
     Mock::given(method("GET"))
         .and(path("/api/workspaces/acme"))
-        .respond_with(
-            ResponseTemplate::new(403).set_body_json(json!({
-                "error": {
-                    "code": "FORBIDDEN",
-                    "message": "Access denied"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(403).set_body_json(json!({
+            "error": {
+                "code": "FORBIDDEN",
+                "message": "Access denied"
+            }
+        })))
         .mount(&server)
         .await;
 
@@ -159,14 +158,12 @@ async fn error_404_not_found_maps_to_not_found() {
 
     Mock::given(method("GET"))
         .and(path("/api/workspaces/nonexistent"))
-        .respond_with(
-            ResponseTemplate::new(404).set_body_json(json!({
-                "error": {
-                    "code": "NOT_FOUND",
-                    "message": "Workspace not found"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(404).set_body_json(json!({
+            "error": {
+                "code": "NOT_FOUND",
+                "message": "Workspace not found"
+            }
+        })))
         .mount(&server)
         .await;
 
@@ -185,17 +182,15 @@ async fn error_400_validation_maps_to_validation() {
 
     Mock::given(method("POST"))
         .and(path("/api/auth/login"))
-        .respond_with(
-            ResponseTemplate::new(400).set_body_json(json!({
-                "error": {
-                    "code": "VALIDATION_ERROR",
-                    "message": "Request validation failed",
-                    "details": [
-                        {"field": "Password", "message": "must be at least 12 characters"}
-                    ]
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(400).set_body_json(json!({
+            "error": {
+                "code": "VALIDATION_ERROR",
+                "message": "Request validation failed",
+                "details": [
+                    {"field": "Password", "message": "must be at least 12 characters"}
+                ]
+            }
+        })))
         .mount(&server)
         .await;
 
@@ -215,18 +210,19 @@ async fn error_500_maps_to_server() {
 
     Mock::given(method("GET"))
         .and(path("/api/crash"))
-        .respond_with(
-            ResponseTemplate::new(500).set_body_json(json!({
-                "error": {
-                    "code": "INTERNAL_ERROR",
-                    "message": "something went wrong"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(500).set_body_json(json!({
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "something went wrong"
+            }
+        })))
         .mount(&server)
         .await;
 
-    let err: KuayleError = client.get::<serde_json::Value>("/api/crash").await.unwrap_err();
+    let err: KuayleError = client
+        .get::<serde_json::Value>("/api/crash")
+        .await
+        .unwrap_err();
     assert!(matches!(err, KuayleError::Server { status: 500, .. }));
     assert_eq!(err.exit_code(), 7);
 }
@@ -238,14 +234,12 @@ async fn error_502_maps_to_server() {
 
     Mock::given(method("GET"))
         .and(path("/api/unavailable"))
-        .respond_with(
-            ResponseTemplate::new(502).set_body_json(json!({
-                "error": {
-                    "code": "BAD_GATEWAY",
-                    "message": "upstream error"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(502).set_body_json(json!({
+            "error": {
+                "code": "BAD_GATEWAY",
+                "message": "upstream error"
+            }
+        })))
         .mount(&server)
         .await;
 
@@ -269,7 +263,10 @@ async fn error_invalid_json_body_maps_to_api_error() {
         .mount(&server)
         .await;
 
-    let err: KuayleError = client.get::<serde_json::Value>("/api/bad").await.unwrap_err();
+    let err: KuayleError = client
+        .get::<serde_json::Value>("/api/bad")
+        .await
+        .unwrap_err();
     // Should map to NotFound because status is 404, but error code will be "UNKNOWN"
     // since we can't parse the HTML body.
     // 应映射为 NotFound（状态码 404），但由于无法解析 HTML body，错误码将是 "UNKNOWN"。
@@ -292,8 +289,7 @@ async fn delete_sends_request() {
 
     // DELETE to /api/tokens/:id returns 204 No Content.
     // We expect an empty object or error.
-    let result: Result<serde_json::Value, _> =
-        client.delete("/api/tokens/some-id").await;
+    let result: Result<serde_json::Value, _> = client.delete("/api/tokens/some-id").await;
     // 204 with no body — serde_json will fail to parse "".
     // This is expected; production code handles 204 specially later.
     // 204 无 body — serde_json 解析 "" 会失败。这是预期行为；生产代码稍后特殊处理 204。
@@ -408,7 +404,10 @@ async fn exhaust_retries_on_502_returns_server_error() {
         .mount(&server)
         .await;
 
-    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    let err: KuayleError = client
+        .get::<UserResponse>("/api/auth/me")
+        .await
+        .unwrap_err();
     assert!(matches!(err, KuayleError::Server { status: 502, .. }));
 }
 
@@ -489,7 +488,10 @@ async fn rate_limit_exhausted_returns_rate_limited_error() {
         .mount(&server)
         .await;
 
-    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    let err: KuayleError = client
+        .get::<UserResponse>("/api/auth/me")
+        .await
+        .unwrap_err();
     assert!(matches!(err, KuayleError::RateLimited { .. }));
     assert_eq!(err.exit_code(), 6);
 }
@@ -510,6 +512,9 @@ async fn non_retryable_500_does_not_retry() {
         .mount(&server)
         .await;
 
-    let err: KuayleError = client.get::<UserResponse>("/api/auth/me").await.unwrap_err();
+    let err: KuayleError = client
+        .get::<UserResponse>("/api/auth/me")
+        .await
+        .unwrap_err();
     assert!(matches!(err, KuayleError::Server { status: 500, .. }));
 }

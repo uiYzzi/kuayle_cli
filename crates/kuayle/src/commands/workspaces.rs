@@ -43,14 +43,8 @@ async fn cmd_list(cli: &Cli) {
                 }
                 // Human table output.
                 // 人类可读表格输出。
-                println!(
-                    "{:<40} {:<20} {:<15}",
-                    "NAME", "SLUG", "ROLE"
-                );
-                println!(
-                    "{:-<40} {:-<20} {:-<15}",
-                    "", "", ""
-                );
+                println!("{:<40} {:<20} {:<15}", "NAME", "SLUG", "ROLE");
+                println!("{:-<40} {:-<20} {:-<15}", "", "", "");
                 for ws in &workspaces {
                     println!(
                         "{:<40} {:<20} {:<15}",
@@ -82,9 +76,7 @@ async fn resolve_client(cli: &Cli) -> Result<Client, String> {
     let session = store
         .load(&resolved.profile)
         .map_err(|e| format!("load session: {e}"))?
-        .ok_or_else(|| {
-            "not logged in. Run 'kuayle auth login' to authenticate.".to_string()
-        })?;
+        .ok_or_else(|| "not logged in. Run 'kuayle auth login' to authenticate.".to_string())?;
 
     let base_url = Url::parse(&resolved.url).map_err(|e| format!("invalid URL: {e}"))?;
     Ok(Client::new(base_url, session.bearer_token().to_string()))

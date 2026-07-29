@@ -169,17 +169,13 @@ mod tests {
 
     #[test]
     fn exit_code_validation_is_4() {
-        let err = KuayleError::Validation {
-            details: vec![],
-        };
+        let err = KuayleError::Validation { details: vec![] };
         assert_eq!(err.exit_code(), 4);
     }
 
     #[test]
     fn exit_code_rate_limited_is_6() {
-        let err = KuayleError::RateLimited {
-            retry_after: None,
-        };
+        let err = KuayleError::RateLimited { retry_after: None };
         assert_eq!(err.exit_code(), 6);
     }
 

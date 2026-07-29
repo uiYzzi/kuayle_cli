@@ -61,6 +61,7 @@ pub struct ResolvedConfig {
 
     /// The workspace slug (from profile, flag, or env).
     /// 工作区 slug（来自 profile、flag 或环境变量）。
+    #[allow(dead_code)]
     pub workspace: Option<String>,
 }
 
@@ -139,9 +140,15 @@ impl Config {
         let workspace = if let Some(w) = cli_workspace {
             Some(w.to_string())
         } else if let Ok(w) = std::env::var("KUAYLE_WORKSPACE") {
-            if !w.is_empty() { Some(w) } else { None }
+            if !w.is_empty() {
+                Some(w)
+            } else {
+                None
+            }
         } else {
-            self.profiles.get(&profile).and_then(|p| p.workspace.clone())
+            self.profiles
+                .get(&profile)
+                .and_then(|p| p.workspace.clone())
         };
 
         Ok(ResolvedConfig {
@@ -215,10 +222,7 @@ url = "http://localhost:5173"
         assert_eq!(config.default_profile.as_deref(), Some("work"));
         assert_eq!(config.profiles.len(), 2);
         assert_eq!(config.profiles["work"].url, "https://kuayle.work.com");
-        assert_eq!(
-            config.profiles["work"].workspace.as_deref(),
-            Some("acme")
-        );
+        assert_eq!(config.profiles["work"].workspace.as_deref(), Some("acme"));
         assert_eq!(config.profiles["personal"].workspace, None);
     }
 
@@ -270,9 +274,7 @@ url = "http://localhost:5173"
             profiles,
         };
 
-        let resolved = config
-            .resolve(Some("work"), None, None)
-            .unwrap();
+        let resolved = config.resolve(Some("work"), None, None).unwrap();
         assert_eq!(resolved.profile, "work");
         assert_eq!(resolved.url, "http://localhost:5173");
         assert_eq!(resolved.workspace.as_deref(), Some("acme"));

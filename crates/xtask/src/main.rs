@@ -11,7 +11,9 @@
 use std::process::Command;
 
 fn main() {
-    let task = std::env::args().nth(1).unwrap_or_else(|| "check".to_string());
+    let task = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "check".to_string());
 
     match task.as_str() {
         "check" => run_check(),

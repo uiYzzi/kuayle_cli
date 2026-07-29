@@ -37,6 +37,7 @@ impl FileCredentialStore {
 
     /// Create a store at a custom path (for testing).
     /// 在自定义路径创建存储（用于测试）。
+    #[allow(dead_code)]
     pub fn at(dir: PathBuf) -> Self {
         FileCredentialStore { dir }
     }
@@ -53,8 +54,7 @@ impl CredentialStore for FileCredentialStore {
             return Ok(None);
         }
         let content = fs::read_to_string(&path).map_err(|e| format!("read: {e}"))?;
-        let session: Session =
-            serde_json::from_str(&content).map_err(|e| format!("parse: {e}"))?;
+        let session: Session = serde_json::from_str(&content).map_err(|e| format!("parse: {e}"))?;
         Ok(Some(session))
     }
 
@@ -64,8 +64,7 @@ impl CredentialStore for FileCredentialStore {
 
         // Write with restrictive permissions (0600).
         // 以严格权限（0600）写入。
-        let mut file =
-            fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
+        let mut file = fs::File::create(&path).map_err(|e| format!("create file: {e}"))?;
 
         #[cfg(unix)]
         {
@@ -174,9 +173,7 @@ pub fn get_credential_store() -> Result<Box<dyn CredentialStore>, String> {
             eprintln!(
                 "warning: OS keychain unavailable, falling back to file-based credential storage"
             );
-            eprintln!(
-                "警告：操作系统 keychain 不可用，降级为文件凭据存储"
-            );
+            eprintln!("警告：操作系统 keychain 不可用，降级为文件凭据存储");
             Ok(Box::new(FileCredentialStore::new()?))
         }
     }
@@ -228,12 +225,8 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let store = FileCredentialStore::at(dir.path().to_path_buf());
 
-        store
-            .save("work", &Session::pat("old_token"))
-            .unwrap();
-        store
-            .save("work", &Session::pat("new_token"))
-            .unwrap();
+        store.save("work", &Session::pat("old_token")).unwrap();
+        store.save("work", &Session::pat("new_token")).unwrap();
 
         let loaded = store.load("work").unwrap().unwrap();
         assert_eq!(loaded.bearer_token(), "new_token");

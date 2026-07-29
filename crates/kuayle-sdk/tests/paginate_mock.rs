@@ -22,7 +22,12 @@ async fn test_client(server: &MockServer) -> Client {
     Client::new(base_url, "kuayle_pat_test".into())
 }
 
-fn paginated_response(items: Vec<TestItem>, page: u32, per_page: u32, total: u64) -> serde_json::Value {
+fn paginated_response(
+    items: Vec<TestItem>,
+    page: u32,
+    per_page: u32,
+    total: u64,
+) -> serde_json::Value {
     let has_more = (page as u64 * per_page as u64) < total;
     json!({
         "data": items,
@@ -39,17 +44,26 @@ async fn paginate_single_page() {
     let client = test_client(&server).await;
 
     let items = vec![
-        TestItem { id: 1, name: "one".into() },
-        TestItem { id: 2, name: "two".into() },
+        TestItem {
+            id: 1,
+            name: "one".into(),
+        },
+        TestItem {
+            id: 2,
+            name: "two".into(),
+        },
     ];
 
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "1"))
         .and(query_param("per_page", "100"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(items.clone(), 1, 100, 2),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(
+            items.clone(),
+            1,
+            100,
+            2,
+        )))
         .expect(1)
         .mount(&server)
         .await;
@@ -70,16 +84,23 @@ async fn paginate_multiple_pages() {
     let server = MockServer::start().await;
     let client = test_client(&server).await;
 
-    let page1 = vec![TestItem { id: 1, name: "a".into() }];
-    let page2 = vec![TestItem { id: 2, name: "b".into() }];
-    let page3 = vec![TestItem { id: 3, name: "c".into() }];
+    let page1 = vec![TestItem {
+        id: 1,
+        name: "a".into(),
+    }];
+    let page2 = vec![TestItem {
+        id: 2,
+        name: "b".into(),
+    }];
+    let page3 = vec![TestItem {
+        id: 3,
+        name: "c".into(),
+    }];
 
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "1"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(page1, 1, 1, 3),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(page1, 1, 1, 3)))
         .expect(1)
         .mount(&server)
         .await;
@@ -87,9 +108,7 @@ async fn paginate_multiple_pages() {
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "2"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(page2, 2, 1, 3),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(page2, 2, 1, 3)))
         .expect(1)
         .mount(&server)
         .await;
@@ -97,9 +116,7 @@ async fn paginate_multiple_pages() {
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "3"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(page3, 3, 1, 3),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(page3, 3, 1, 3)))
         .expect(1)
         .mount(&server)
         .await;
@@ -124,9 +141,12 @@ async fn paginate_empty() {
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "1"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(vec![], 1, 100, 0),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(
+            vec![],
+            1,
+            100,
+            0,
+        )))
         .expect(1)
         .mount(&server)
         .await;
@@ -147,14 +167,12 @@ async fn paginate_error_on_first_page() {
 
     Mock::given(method("GET"))
         .and(path("/api/issues"))
-        .respond_with(
-            ResponseTemplate::new(401).set_body_json(json!({
-                "error": {
-                    "code": "UNAUTHORIZED",
-                    "message": "bad token"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(401).set_body_json(json!({
+            "error": {
+                "code": "UNAUTHORIZED",
+                "message": "bad token"
+            }
+        })))
         .expect(1)
         .mount(&server)
         .await;
@@ -172,12 +190,15 @@ async fn paginate_error_after_first_page() {
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "1"))
-        .respond_with(ResponseTemplate::new(200).set_body_json(
-            paginated_response(
-                vec![TestItem { id: 1, name: "a".into() }],
-                1, 1, 2,
-            ),
-        ))
+        .respond_with(ResponseTemplate::new(200).set_body_json(paginated_response(
+            vec![TestItem {
+                id: 1,
+                name: "a".into(),
+            }],
+            1,
+            1,
+            2,
+        )))
         .expect(1)
         .mount(&server)
         .await;
@@ -185,14 +206,12 @@ async fn paginate_error_after_first_page() {
     Mock::given(method("GET"))
         .and(path("/api/issues"))
         .and(query_param("page", "2"))
-        .respond_with(
-            ResponseTemplate::new(500).set_body_json(json!({
-                "error": {
-                    "code": "INTERNAL_ERROR",
-                    "message": "boom"
-                }
-            })),
-        )
+        .respond_with(ResponseTemplate::new(500).set_body_json(json!({
+            "error": {
+                "code": "INTERNAL_ERROR",
+                "message": "boom"
+            }
+        })))
         .expect(1)
         .mount(&server)
         .await;

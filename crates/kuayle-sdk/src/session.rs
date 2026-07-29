@@ -169,9 +169,7 @@ mod tests {
     #[test]
     fn memory_store_multiple_profiles() {
         let store = MemoryStore::default();
-        store
-            .save("work", &Session::pat("token_work"))
-            .unwrap();
+        store.save("work", &Session::pat("token_work")).unwrap();
         store
             .save("personal", &Session::pat("token_personal"))
             .unwrap();
@@ -189,12 +187,8 @@ mod tests {
     #[test]
     fn memory_store_overwrite() {
         let store = MemoryStore::default();
-        store
-            .save("work", &Session::pat("old_token"))
-            .unwrap();
-        store
-            .save("work", &Session::pat("new_token"))
-            .unwrap();
+        store.save("work", &Session::pat("old_token")).unwrap();
+        store.save("work", &Session::pat("new_token")).unwrap();
 
         assert_eq!(
             store.load("work").unwrap().unwrap().bearer_token(),

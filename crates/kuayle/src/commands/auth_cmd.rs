@@ -162,7 +162,9 @@ async fn cmd_status(cli: &Cli) {
             match config.resolve(cli.profile.as_deref(), None, None) {
                 Ok(r) => r.url,
                 Err(_) => {
-                    eprintln!("Error: could not determine instance URL. Use --url or set it in config.");
+                    eprintln!(
+                        "Error: could not determine instance URL. Use --url or set it in config."
+                    );
                     eprintln!("错误：无法确定实例 URL。使用 --url 或在配置中设置。");
                     std::process::exit(1);
                 }
@@ -189,7 +191,10 @@ async fn cmd_status(cli: &Cli) {
             let client = Client::new(base_url, session.bearer_token().to_string());
             match client.get::<UserResponse>("/api/auth/me").await {
                 Ok(user) => {
-                    println!("Status:   ✓ authenticated as {} ({})", user.display_name, user.email);
+                    println!(
+                        "Status:   ✓ authenticated as {} ({})",
+                        user.display_name, user.email
+                    );
                 }
                 Err(e) => {
                     println!("Status:   ✗ token invalid or expired ({e})");
@@ -243,15 +248,12 @@ async fn resolve_client(cli: &Cli) -> Result<(Client, String), String> {
         .resolve(cli.profile.as_deref(), cli.url.as_deref(), None)
         .map_err(|e| format!("config: {e}"))?;
 
-    let store =
-        creds::get_credential_store().map_err(|e| format!("credential store: {e}"))?;
+    let store = creds::get_credential_store().map_err(|e| format!("credential store: {e}"))?;
 
     let session = store
         .load(&resolved.profile)
         .map_err(|e| format!("load session: {e}"))?
-        .ok_or_else(|| {
-            "not logged in. Run 'kuayle auth login' to authenticate.".to_string()
-        })?;
+        .ok_or_else(|| "not logged in. Run 'kuayle auth login' to authenticate.".to_string())?;
 
     let base_url = Url::parse(&resolved.url).map_err(|e| format!("invalid URL: {e}"))?;
     let client = Client::new(base_url, session.bearer_token().to_string());

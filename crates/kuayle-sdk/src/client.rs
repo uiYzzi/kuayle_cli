@@ -58,10 +58,7 @@ impl Client {
 
     /// Perform a GET request with retry.
     /// 执行带重试的 GET 请求。
-    pub async fn get<T: DeserializeOwned>(
-        &self,
-        path: &str,
-    ) -> Result<T, KuayleError> {
+    pub async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T, KuayleError> {
         self.execute_with_retry("GET", path, None::<&()>).await
     }
 
@@ -77,10 +74,7 @@ impl Client {
 
     /// Perform a DELETE request (no retry for non-idempotent).
     /// 执行 DELETE 请求（非幂等请求不重试）。
-    pub async fn delete<T: DeserializeOwned>(
-        &self,
-        path: &str,
-    ) -> Result<T, KuayleError> {
+    pub async fn delete<T: DeserializeOwned>(&self, path: &str) -> Result<T, KuayleError> {
         self.execute("DELETE", path, None::<&()>).await
     }
 
@@ -114,7 +108,9 @@ impl Client {
                     }
                     return Err(KuayleError::RateLimited { retry_after });
                 }
-                Err(e @ KuayleError::Server { status, .. }) if idempotent && RetryPolicy::is_retryable_server_error(status) => {
+                Err(e @ KuayleError::Server { status, .. })
+                    if idempotent && RetryPolicy::is_retryable_server_error(status) =>
+                {
                     if attempt < max {
                         let backoff = self.retry.backoff(attempt);
                         tokio::time::sleep(backoff).await;
@@ -190,12 +186,10 @@ impl Client {
     // ── private helpers ────────────────────────────────────────────
 
     fn build_url(&self, path: &str) -> Result<Url, KuayleError> {
-        self.base_url
-            .join(path)
-            .map_err(|e| KuayleError::Api {
-                code: "INVALID_URL".into(),
-                message: format!("failed to join URL: {e}"),
-            })
+        self.base_url.join(path).map_err(|e| KuayleError::Api {
+            code: "INVALID_URL".into(),
+            message: format!("failed to join URL: {e}"),
+        })
     }
 
     async fn read_token(&self) -> String {
@@ -217,7 +211,7 @@ impl Client {
             None
         };
 
-        if status >= 200 && status < 300 {
+        if (200..300).contains(&status) {
             let body = resp.text().await.map_err(KuayleError::Transport)?;
             serde_json::from_str(&body).map_err(|e| KuayleError::Api {
                 code: "DESERIALIZE_ERROR".into(),
@@ -227,15 +221,14 @@ impl Client {
             Err(KuayleError::RateLimited { retry_after })
         } else {
             let body_text = resp.text().await.map_err(KuayleError::Transport)?;
-            let error_body: ErrorBody = serde_json::from_str(&body_text).unwrap_or_else(|_| {
-                ErrorBody {
+            let error_body: ErrorBody =
+                serde_json::from_str(&body_text).unwrap_or_else(|_| ErrorBody {
                     error: crate::error::ErrorPayload {
                         code: "UNKNOWN".into(),
                         message: body_text,
                         details: vec![],
                     },
-                }
-            });
+                });
             Err(KuayleError::from_response(status, error_body))
         }
     }

@@ -1,5 +1,6 @@
 // Output formatting: human / JSON with tty auto-detection.
 // 输出格式化：human / JSON，带 tty 自动检测。
+#![allow(dead_code)] // Wired in item #8
 //
 // In human mode, output is designed for terminal display.
 // In JSON mode, output is machine-readable.
@@ -13,6 +14,7 @@ use serde::Serialize;
 /// Output format for CLI commands.
 /// CLI 命令的输出格式。
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(dead_code)]
 pub enum Format {
     /// Human-readable terminal output.
     /// 人类可读的终端输出。
@@ -117,10 +119,7 @@ pub fn print_table<T: Serialize>(
 
             // Print separator.
             // 打印分隔线。
-            let sep: Vec<String> = widths
-                .iter()
-                .map(|w| "-".repeat(*w))
-                .collect();
+            let sep: Vec<String> = widths.iter().map(|w| "-".repeat(*w)).collect();
             println!("{}", sep.join("  "));
 
             // Print rows.

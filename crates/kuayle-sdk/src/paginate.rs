@@ -36,12 +36,7 @@ pub struct PaginationStream<T> {
 }
 
 impl<T: DeserializeOwned + Send + 'static> PaginationStream<T> {
-    pub fn new(
-        client: Client,
-        path: String,
-        query_base: serde_json::Value,
-        per_page: u32,
-    ) -> Self {
+    pub fn new(client: Client, path: String, query_base: serde_json::Value, per_page: u32) -> Self {
         PaginationStream {
             client,
             path,
@@ -75,7 +70,9 @@ impl<T: DeserializeOwned + Send + 'static> PaginationStream<T> {
         }
 
         let fut = async move {
-            client.get(&format!("{path}?{}", query_string(&query))).await
+            client
+                .get(&format!("{path}?{}", query_string(&query)))
+                .await
         };
 
         self.pending_fetch = Some(Box::pin(fut));
@@ -178,9 +175,8 @@ impl Client {
         path: &str,
         query: impl Serialize,
     ) -> impl Stream<Item = Result<T, KuayleError>> + '_ {
-        let query_value = serde_json::to_value(&query).unwrap_or_else(|_| {
-            serde_json::Value::Object(serde_json::Map::new())
-        });
+        let query_value = serde_json::to_value(&query)
+            .unwrap_or_else(|_| serde_json::Value::Object(serde_json::Map::new()));
 
         PaginationStream::new(self.clone(), path.to_string(), query_value, 100)
     }

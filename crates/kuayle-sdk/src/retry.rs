@@ -61,7 +61,7 @@ impl RetryPolicy {
     /// Whether an HTTP status code is a server error worth retrying.
     /// HTTP 状态码是否值得重试的服务端错误。
     pub fn is_retryable_server_error(status: u16) -> bool {
-        matches!(status, 502 | 503 | 504)
+        matches!(status, 502..=504)
     }
 
     /// Whether an HTTP status code signals rate-limiting.
