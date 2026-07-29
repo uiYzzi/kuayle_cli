@@ -27,6 +27,8 @@ fn setup_home() -> TempDir {
 fn kuayle_cmd(home: &TempDir, server_uri: &str) -> Command {
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_URL", server_uri)
         .env("KUAYLE_CREDENTIAL_STORE", "file");
     cmd
@@ -50,6 +52,8 @@ fn auth_status_not_logged_in() {
     let home = setup_home();
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("auth")
         .arg("status")
@@ -178,6 +182,8 @@ async fn auth_logout_removes_session() {
     // Verify status shows not logged in.
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("auth")
         .arg("status");
@@ -227,6 +233,8 @@ async fn whoami_not_logged_in_fails() {
 
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .arg("whoami");
 
@@ -482,6 +490,8 @@ workspace = "acme"
     // 无 KUAYLE_URL；依赖 config.toml profile。
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .args(["workspaces", "list", "--format", "human"]);
 
@@ -528,6 +538,8 @@ async fn json_error_output_on_auth_failure() {
 
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
+        .env("XDG_CONFIG_HOME", home.path().join(".config"))
+        .env("XDG_CACHE_HOME", home.path().join(".cache"))
         .env("KUAYLE_CREDENTIAL_STORE", "file")
         .env("KUAYLE_URL", server.uri())
         .args(["whoami", "--format", "json"]);
