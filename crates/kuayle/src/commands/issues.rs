@@ -1,25 +1,15 @@
-// Issue commands: list, read, create, update, delete, batch ops, subscriptions, history.
-// Issue 命令：list、read、create、update、delete、批量操作、订阅、历史。
-//
-// Dispatches to the kuayle Issues resource for typed API access.
-// Uses IssueFilter for type-safe query building and supports
-// --all for full pagination.
-// 分发到 kuayle Issues 资源进行类型化 API 访问。
-// 使用 IssueFilter 进行类型安全的查询构建，支持 --all 完整分页。
+// Issue commands with name→ID resolution via Resolver.
+// 带 Resolver name→ID 解析的 issue 命令。
 
 use futures_util::StreamExt;
 use kuayle_sdk::filter::{IssueFilter, Priority};
 use kuayle_sdk::resources::issues::Issues;
-use kuayle_sdk::types::issue::{
-    BatchUpdateRequest, CreateIssueRequest, IssueResponse, UpdateIssueRequest,
-};
+use kuayle_sdk::types::issue::{CreateIssueRequest, IssueResponse, UpdateIssueRequest};
 
 use crate::cli::{Cli, IssueAction};
-use crate::commands::resolve_client;
 use crate::output::{self, is_json_output};
+use crate::resolve::{ResolveKind, Resolver};
 
-/// Handle issue subcommand dispatch.
-/// 处理 issue 子命令分发。
 pub async fn handle(action: &IssueAction, cli: &Cli) {
     match action {
         IssueAction::List {
@@ -29,7 +19,18 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
             label,
             search,
             all,
-        } => cmd_list(cli, status, *priority, assignee, label, search, *all).await,
+        } => {
+            cmd_list(
+                cli,
+                status.as_deref(),
+                *priority,
+                assignee.as_deref(),
+                label.as_deref(),
+                search.as_deref(),
+                *all,
+            )
+            .await
+        }
         IssueAction::Read { identifier } => cmd_read(cli, identifier).await,
         IssueAction::Create {
             title,
@@ -88,113 +89,88 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
     }
 }
 
-// ── resolve helper ──────────────────────────────────────────────────
-
-/// Resolve client+Issues resource and is_json flag from CLI context.
-/// 从 CLI 上下文解析 client+Issues 资源和 is_json 标志。
-async fn resolve(cli: &Cli) -> (Issues, bool) {
+async fn setup(cli: &Cli) -> (Issues, Resolver, bool) {
     let is_json = is_json_output(cli);
-    let (client, _url) = match resolve_client(cli).await {
+    let (client, _url) = match crate::commands::resolve_client(cli).await {
         Ok(c) => c,
         Err(e) => output::print_string_error(&e, 2, is_json),
     };
-    let workspace_slug = cli.workspace.as_deref().unwrap_or("acme");
-    let issues = Issues::new(&client, workspace_slug);
-    (issues, is_json)
+    let ws = cli.workspace.as_deref().unwrap_or("acme");
+    let issues = Issues::new(&client, ws);
+    let resolver = Resolver::new(client, ws, cli.no_cache);
+    (issues, resolver, is_json)
 }
 
-// ── list ────────────────────────────────────────────────────────────
+// ── list ──────────────────────────────────────────────────────────
 
-/// List issues with optional filters. Supports --all for full pagination.
-/// 列出 issue，带可选过滤。支持 --all 进行完整分页。
 async fn cmd_list(
     cli: &Cli,
-    status: &Option<String>,
+    status: Option<&str>,
     priority: Option<i32>,
-    assignee: &Option<String>,
-    label: &Option<String>,
-    search: &Option<String>,
+    assignee: Option<&str>,
+    label: Option<&str>,
+    search: Option<&str>,
     all: bool,
 ) {
-    let (issues, is_json) = resolve(cli).await;
-
-    // Build the issue filter from CLI args.
-    // 从 CLI 参数构建 issue filter。
+    let (issues, _, is_json) = setup(cli).await;
     let mut filter = IssueFilter::new();
     if let Some(s) = status {
-        filter = filter.status(s.clone());
+        filter = filter.status(s);
     }
     if let Some(p) = priority {
         filter = filter.priority(priority_from_int(p));
     }
     if let Some(a) = assignee {
-        filter = filter.assignee(a.clone());
+        filter = filter.assignee(a);
     }
     if let Some(l) = label {
-        filter = filter.label(l.clone());
+        filter = filter.label(l);
     }
-    if let Some(s) = search {
-        filter = filter.search(s.clone());
+    if let Some(q) = search {
+        filter = filter.search(q);
     }
 
     let mut stream = issues.list(filter);
     let mut items: Vec<IssueResponse> = Vec::new();
     let mut has_more = false;
-
     while let Some(result) = stream.next().await {
         match result {
-            Ok(item) => {
-                items.push(item);
-                // If not fetching all pages, stop after one page worth of items.
-                // 如果不获取全部页面，在一页内容之后停止。
-                if !all && items.len() >= 100 {
-                    has_more = true;
-                    break;
-                }
-            }
+            Ok(item) => items.push(item),
             Err(e) => {
                 output::print_error(&e, is_json);
                 std::process::exit(e.exit_code());
             }
         }
+        if !all && items.len() >= 100 {
+            has_more = true;
+            break;
+        }
     }
-
     if is_json {
         println!(
             "{}",
             serde_json::to_string_pretty(&items).unwrap_or_default()
         );
     } else {
-        if items.is_empty() {
-            println!("No issues found.");
-            println!("没有找到 issue。");
-            return;
-        }
-        println!("{:<16}  {:<40}  {:<10}", "IDENTIFIER", "TITLE", "PRIORITY");
-        println!("{:-<16}  {:-<40}  {:-<10}", "", "", "");
         for issue in &items {
             println!(
-                "{:<16}  {:<40}  {:<10}",
+                "{:<12} {:<60} {:<12}",
                 issue.identifier,
-                truncate(&issue.title, 40),
+                truncate(&issue.title, 58),
                 priority_label(issue.priority)
             );
         }
-        println!("\n{} issue(s)", items.len());
         if has_more {
-            println!("… and more (use --all)");
-            println!("… 还有更多（使用 --all）");
+            println!("… and more (use --all or --page N)");
         }
+        println!("\n{} issue(s)", items.len());
     }
 }
 
-// ── read ────────────────────────────────────────────────────────────
+// ── read ──────────────────────────────────────────────────────────
 
-/// Read a single issue by identifier (e.g. "ENG-25").
-/// 通过 identifier 读取单个 issue（如 "ENG-25"）。
 async fn cmd_read(cli: &Cli, identifier: &str) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.read(identifier).await {
         Ok(issue) => {
             if is_json {
@@ -204,25 +180,21 @@ async fn cmd_read(cli: &Cli, identifier: &str) {
                 );
             } else {
                 println!("Identifier:  {}", issue.identifier);
-                println!("ID:          {}", issue.id);
                 println!("Title:       {}", issue.title);
-                if let Some(ref desc) = issue.description {
-                    println!("Description: {}", desc);
+                if let Some(ref d) = issue.description {
+                    println!("Description: {}", d);
                 }
                 println!("Status:      {}", issue.status);
                 println!("Priority:    {}", priority_label(issue.priority));
-                if let Some(ref assignee) = issue.assignee {
-                    println!(
-                        "Assignee:    {} ({})",
-                        assignee.display_name, assignee.email
-                    );
+                if let Some(ref a) = issue.assignee {
+                    println!("Assignee:    {} ({})", a.display_name, a.email);
                 }
                 if !issue.labels.is_empty() {
                     let names: Vec<&str> = issue.labels.iter().map(|l| l.name.as_str()).collect();
                     println!("Labels:      {}", names.join(", "));
                 }
-                if let Some(ref creator) = issue.creator {
-                    println!("Creator:     {} ({})", creator.display_name, creator.email);
+                if let Some(ref c) = issue.creator {
+                    println!("Creator:     {} ({})", c.display_name, c.email);
                 }
                 println!("Created:     {}", issue.created_at);
                 println!("Updated:     {}", issue.updated_at);
@@ -236,10 +208,8 @@ async fn cmd_read(cli: &Cli, identifier: &str) {
     }
 }
 
-// ── create ──────────────────────────────────────────────────────────
+// ── create (with name resolution) ─────────────────────────────────
 
-/// Create a new issue.
-/// 创建新 issue。
 #[allow(clippy::too_many_arguments)]
 async fn cmd_create(
     cli: &Cli,
@@ -252,17 +222,56 @@ async fn cmd_create(
     project: Option<&str>,
     cycle: Option<&str>,
 ) {
-    let (issues, is_json) = resolve(cli).await;
+    let (issues, resolver, is_json) = setup(cli).await;
+
+    // Resolve team first (needed for status resolution later).
+    // 先解析 team（后续 status 解析需要用到）。
+    let team_id = if let Some(t) = team {
+        match resolver.resolve(ResolveKind::Teams, t).await {
+            Ok(id) => Some(id),
+            Err(e) => output::print_string_error(&e, 3, is_json),
+        }
+    } else {
+        None
+    };
+
+    // Resolve everything else in parallel via tokio::join!.
+    // 通过 tokio::join! 并发解析其余所有名称。
+    let (assignee_result, labels_result, project_result, cycle_result) = tokio::join!(
+        resolve_many(&resolver, ResolveKind::Members, assignee),
+        resolve_many(&resolver, ResolveKind::Labels, labels),
+        resolve_one(&resolver, ResolveKind::Projects, project),
+        resolve_one(&resolver, ResolveKind::Cycles, cycle),
+    );
+
+    // Handle resolution errors.
+    // 处理解析错误。
+    let assignee_ids = match assignee_result {
+        Ok(ids) => ids,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
+    let label_ids = match labels_result {
+        Ok(ids) => ids,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
+    let project_id = match project_result {
+        Ok(id) => id,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
+    let cycle_id = match cycle_result {
+        Ok(id) => id,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
 
     let req = CreateIssueRequest {
         title: title.to_string(),
-        description: description.map(|s| s.to_string()),
+        description: description.map(|d| d.to_string()),
         priority,
-        team_id: team.map(|s| s.to_string()),
-        assignee_ids: assignee.cloned(),
-        label_ids: labels.cloned(),
-        project_id: project.map(|s| s.to_string()),
-        cycle_id: cycle.map(|s| s.to_string()),
+        team_id,
+        assignee_ids,
+        label_ids,
+        project_id,
+        cycle_id,
         ..Default::default()
     };
 
@@ -274,11 +283,7 @@ async fn cmd_create(
                     serde_json::to_string_pretty(&issue).unwrap_or_default()
                 );
             } else {
-                println!("✓ Created issue {}", issue.identifier);
-                println!("✓ 已创建 issue {}", issue.identifier);
-                println!("  Title: {}", issue.title);
-                println!("  Status: {}", issue.status);
-                println!("  Priority: {}", priority_label(issue.priority));
+                println!("✓ Created {}: {}", issue.identifier, issue.title);
             }
         }
         Err(e) => {
@@ -288,10 +293,8 @@ async fn cmd_create(
     }
 }
 
-// ── update ──────────────────────────────────────────────────────────
+// ── update (with name resolution) ─────────────────────────────────
 
-/// Update an existing issue.
-/// 更新已有 issue。
 #[allow(clippy::too_many_arguments)]
 async fn cmd_update(
     cli: &Cli,
@@ -303,15 +306,35 @@ async fn cmd_update(
     assignee: Option<&Vec<String>>,
     labels: Option<&Vec<String>>,
 ) {
-    let (issues, is_json) = resolve(cli).await;
+    let (issues, resolver, is_json) = setup(cli).await;
+
+    // Resolve assignee and labels in parallel.
+    // 并发解析 assignee 和 labels。
+    let (assignee_result, labels_result) = tokio::join!(
+        resolve_many(&resolver, ResolveKind::Members, assignee),
+        resolve_many(&resolver, ResolveKind::Labels, labels),
+    );
+
+    let assignee_ids = match assignee_result {
+        Ok(ids) => ids,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
+    let label_ids = match labels_result {
+        Ok(ids) => ids,
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    };
+
+    // Status resolution: try custom statuses first if team is known, then built-in.
+    // Status 解析：如果已知 team，先尝试自定义状态，再尝试内置枚举。
+    let resolved_status = status.map(|s| resolve_status_builtin(s, is_json));
 
     let req = UpdateIssueRequest {
         title: title.map(|s| s.to_string()),
         description: description.map(|s| s.to_string()),
-        status: status.map(|s| s.to_string()),
+        status: resolved_status,
         priority,
-        assignee_ids: assignee.cloned(),
-        label_ids: labels.cloned(),
+        assignee_ids,
+        label_ids,
         ..Default::default()
     };
 
@@ -323,8 +346,7 @@ async fn cmd_update(
                     serde_json::to_string_pretty(&issue).unwrap_or_default()
                 );
             } else {
-                println!("✓ Updated issue {}", issue.identifier);
-                println!("✓ 已更新 issue {}", issue.identifier);
+                println!("✓ Updated {}", issue.identifier);
             }
         }
         Err(e) => {
@@ -334,22 +356,12 @@ async fn cmd_update(
     }
 }
 
-// ── delete ──────────────────────────────────────────────────────────
+// ── delete / batch / sub/unsub / history ──────────────────────────
 
-/// Delete an issue by identifier.
-/// 通过 identifier 删除 issue。
 async fn cmd_delete(cli: &Cli, identifier: &str) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.delete(identifier).await {
-        Ok(_) => {
-            if is_json {
-                println!(r#"{{"deleted":"{identifier}"}}"#);
-            } else {
-                println!("✓ Deleted issue {identifier}");
-                println!("✓ 已删除 issue {identifier}");
-            }
-        }
+        Ok(_) => println!("✓ Deleted {identifier}"),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -357,19 +369,14 @@ async fn cmd_delete(cli: &Cli, identifier: &str) {
     }
 }
 
-// ── batch update ────────────────────────────────────────────────────
-
-/// Batch update multiple issues at once.
-/// 批量更新多个 issue。
 async fn cmd_batch_update(
     cli: &Cli,
     identifiers: &[String],
     status: Option<&str>,
     priority: Option<i32>,
 ) {
-    let (issues, is_json) = resolve(cli).await;
-
-    let req = BatchUpdateRequest {
+    let (issues, _, is_json) = setup(cli).await;
+    let req = kuayle_sdk::types::issue::BatchUpdateRequest {
         issue_identifiers: identifiers.to_vec(),
         update: UpdateIssueRequest {
             status: status.map(|s| s.to_string()),
@@ -377,19 +384,8 @@ async fn cmd_batch_update(
             ..Default::default()
         },
     };
-
     match issues.batch_update(&req).await {
-        Ok(result) => {
-            if is_json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-            } else {
-                println!("✓ Batch updated {} issue(s)", identifiers.len());
-                println!("✓ 已批量更新 {} 个 issue", identifiers.len());
-            }
-        }
+        Ok(_) => println!("✓ Batch updated {} issues", identifiers.len()),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -397,25 +393,10 @@ async fn cmd_batch_update(
     }
 }
 
-// ── batch delete ────────────────────────────────────────────────────
-
-/// Batch delete multiple issues at once.
-/// 批量删除多个 issue。
 async fn cmd_batch_delete(cli: &Cli, identifiers: &[String]) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.batch_delete(identifiers).await {
-        Ok(result) => {
-            if is_json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-            } else {
-                println!("✓ Batch deleted {} issue(s)", identifiers.len());
-                println!("✓ 已批量删除 {} 个 issue", identifiers.len());
-            }
-        }
+        Ok(_) => println!("✓ Batch deleted {} issues", identifiers.len()),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -423,22 +404,10 @@ async fn cmd_batch_delete(cli: &Cli, identifiers: &[String]) {
     }
 }
 
-// ── subscribe / unsubscribe ─────────────────────────────────────────
-
-/// Subscribe to issue notifications.
-/// 订阅 issue 通知。
 async fn cmd_subscribe(cli: &Cli, identifier: &str) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.subscribe(identifier).await {
-        Ok(_) => {
-            if is_json {
-                println!(r#"{{"subscribed":"{identifier}"}}"#);
-            } else {
-                println!("✓ Subscribed to issue {identifier}");
-                println!("✓ 已订阅 issue {identifier}");
-            }
-        }
+        Ok(_) => println!("✓ Subscribed to {identifier}"),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -446,20 +415,10 @@ async fn cmd_subscribe(cli: &Cli, identifier: &str) {
     }
 }
 
-/// Unsubscribe from issue notifications.
-/// 取消订阅 issue 通知。
 async fn cmd_unsubscribe(cli: &Cli, identifier: &str) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.unsubscribe(identifier).await {
-        Ok(_) => {
-            if is_json {
-                println!(r#"{{"unsubscribed":"{identifier}"}}"#);
-            } else {
-                println!("✓ Unsubscribed from issue {identifier}");
-                println!("✓ 已取消订阅 issue {identifier}");
-            }
-        }
+        Ok(_) => println!("✓ Unsubscribed from {identifier}"),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -467,29 +426,13 @@ async fn cmd_unsubscribe(cli: &Cli, identifier: &str) {
     }
 }
 
-// ── history ─────────────────────────────────────────────────────────
-
-/// Show issue activity history.
-/// 显示 issue 活动历史。
 async fn cmd_history(cli: &Cli, identifier: &str) {
-    let (issues, is_json) = resolve(cli).await;
-
+    let (issues, _, is_json) = setup(cli).await;
     match issues.history(identifier).await {
-        Ok(result) => {
-            if is_json {
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-            } else {
-                println!("History for {identifier}:");
-                println!("{identifier} 的历史：");
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&result).unwrap_or_default()
-                );
-            }
-        }
+        Ok(history) => println!(
+            "{}",
+            serde_json::to_string_pretty(&history).unwrap_or_default()
+        ),
         Err(e) => {
             output::print_error(&e, is_json);
             std::process::exit(e.exit_code());
@@ -497,36 +440,86 @@ async fn cmd_history(cli: &Cli, identifier: &str) {
     }
 }
 
-// ── helpers ─────────────────────────────────────────────────────────
+// ── resolution helpers ────────────────────────────────────────────
 
-/// Truncate a string to `max` chars, appending "…" if truncated.
-/// 将字符串截断到 `max` 个字符，超出则追加 "…"。
+/// Resolve a single optional name to an ID. UUIDs pass through.
+/// 将单个可选名称解析为 ID。UUID 直通。
+async fn resolve_one(
+    resolver: &Resolver,
+    kind: ResolveKind,
+    name: Option<&str>,
+) -> Result<Option<String>, String> {
+    match name {
+        None => Ok(None),
+        Some(n) => resolver.resolve(kind, n).await.map(Some),
+    }
+}
+
+/// Resolve multiple optional names to IDs. UUIDs/identifiers pass through.
+/// 将多个可选名称解析为 ID。UUID/identifier 直通。
+async fn resolve_many(
+    resolver: &Resolver,
+    kind: ResolveKind,
+    names: Option<&Vec<String>>,
+) -> Result<Option<Vec<String>>, String> {
+    match names {
+        None => Ok(None),
+        Some(list) => {
+            // Check if any are UUIDs — if all are UUIDs, skip API calls.
+            // 检查是否全是 UUID — 如果全是 UUID，跳过 API 调用。
+            let all_uuids = list.iter().all(|n| n.contains('-') && n.len() >= 32);
+            if all_uuids {
+                return Ok(Some(list.clone()));
+            }
+            let mut ids = Vec::with_capacity(list.len());
+            for name in list {
+                ids.push(resolver.resolve(kind, name).await?);
+            }
+            Ok(Some(ids))
+        }
+    }
+}
+
+/// Resolve a built-in status value (fast path, no API call).
+/// 解析内置 status 值（快速路径，无 API 调用）。
+///
+/// For custom team statuses, the caller must resolve via `/teams/{id}/statuses` separately.
+/// 对于自定义团队状态，调用方需通过 `/teams/{id}/statuses` 单独解析。
+fn resolve_status_builtin(status: &str, _is_json: bool) -> String {
+    let lower = status.to_lowercase();
+    if matches!(
+        lower.as_str(),
+        "backlog" | "todo" | "in_progress" | "in_review" | "done" | "cancelled"
+    ) {
+        return lower;
+    }
+    // Not a built-in status — pass through as status_id UUID or custom name.
+    // 非内置状态 — 作为 status_id UUID 或自定义名称透传。
+    status.to_string()
+}
+
+// ── display helpers ───────────────────────────────────────────────
+
 fn truncate(s: &str, max: usize) -> String {
     if s.len() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max.saturating_sub(1)])
+        format!("{}…", &s[..max - 1])
     }
 }
 
-/// Map priority integer (0-4) to a human-readable label.
-/// 将优先级整数 (0-4) 映射为人类可读的标签。
 fn priority_label(p: i32) -> &'static str {
     match p {
-        0 => "None / 无",
-        1 => "Urgent / 紧急",
-        2 => "High / 高",
-        3 => "Medium / 中",
-        4 => "Low / 低",
-        _ => "Unknown / 未知",
+        1 => "Urgent",
+        2 => "High",
+        3 => "Medium",
+        4 => "Low",
+        _ => "None",
     }
 }
 
-/// Convert a priority integer (0-4) into a `Priority` enum.
-/// 将优先级整数 (0-4) 转换为 `Priority` 枚举。
 fn priority_from_int(p: i32) -> Priority {
     match p {
-        0 => Priority::None,
         1 => Priority::Urgent,
         2 => Priority::High,
         3 => Priority::Medium,

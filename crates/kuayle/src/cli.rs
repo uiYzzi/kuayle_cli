@@ -14,6 +14,9 @@ pub struct Cli {
     pub workspace: Option<String>,
     #[arg(long, global = true, default_value = "auto")]
     pub format: String,
+    /// Disable resolve disk cache / 禁用解析磁盘缓存
+    #[arg(long, global = true, env = "KUAYLE_NO_CACHE")]
+    pub no_cache: bool,
     #[command(subcommand)]
     pub command: Command,
 }
