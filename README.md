@@ -21,7 +21,7 @@ A kuayle server with Personal Access Token support — see [kuayle#51](https://g
 curl -fsSL https://raw.githubusercontent.com/uiYzzi/kuayle_cli/main/install.sh | sh
 ```
 
-Or via cargo: `cargo install --git https://github.com/uiYzzi/kuayle_cli`
+Or via cargo: `cargo install --git https://github.com/uiYzzi/kuayle_cli kuayle`
 
 Shell completions: `kuayle completion <bash|zsh|fish>`
 
