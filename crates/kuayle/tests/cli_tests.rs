@@ -659,3 +659,38 @@ async fn issue_create_with_cached_names_makes_minimal_requests() {
     // 验证：总请求 = 1(auth) + 1(teams) + 1(members) + 1(labels) + 2(creates) = 6。
     // 第二次调用仅发起 1 个网络请求（仅 POST create）。
 }
+
+// ── Relations delete correct path ─────────────────────────────────
+// 关系删除的正确路径
+
+#[tokio::test]
+async fn relations_delete_uses_correct_path() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login.
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    // Mock the correct DELETE path: /api/workspaces/acme/issues/ENG-1/relations/r1
+    Mock::given(method("DELETE"))
+        .and(path("/api/workspaces/acme/issues/ENG-1/relations/r1"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!({"deleted": true})))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["relations", "delete", "ENG-1", "r1", "--format", "human"]);
+
+    cmd.assert().success();
+}

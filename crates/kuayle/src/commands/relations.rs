@@ -21,7 +21,7 @@ pub async fn handle(action: &RelationAction, cli: &Cli) {
             related,
             r#type,
         } => cmd_create(cli, issue, related, r#type).await,
-        RelationAction::Delete { id } => cmd_delete(cli, id).await,
+        RelationAction::Delete { issue, id } => cmd_delete(cli, issue, id).await,
     }
 }
 
@@ -123,10 +123,11 @@ async fn cmd_create(cli: &Cli, issue: &str, related: &str, relation_type: &str) 
 // ── delete ──────────────────────────────────────────────────────────
 
 /// Delete a relation by ID.
+/// DELETE /api/workspaces/{ws}/issues/{issue}/relations/{id}
 /// 通过 ID 删除关系。
-async fn cmd_delete(cli: &Cli, id: &str) {
+async fn cmd_delete(cli: &Cli, issue: &str, id: &str) {
     let (client, ws, is_json) = resolve(cli).await;
-    let path = format!("/api/workspaces/{ws}/issues/relations/{id}");
+    let path = format!("/api/workspaces/{ws}/issues/{issue}/relations/{id}");
 
     match client.delete::<serde_json::Value>(&path).await {
         Ok(_) => {

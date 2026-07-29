@@ -174,6 +174,7 @@ pub enum RelationAction {
         r#type: String,
     },
     Delete {
+        issue: String,
         id: String,
     },
 }
