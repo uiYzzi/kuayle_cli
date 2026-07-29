@@ -93,7 +93,7 @@ async fn cmd_create(cli: &Cli, issue: &str, related: &str, relation_type: &str) 
     let path = format!("/api/workspaces/{ws}/issues/{issue}/relations");
 
     let req = CreateRelationRequest {
-        related_issue_id: related.to_string(),
+        related_identifier: related.to_string(),
         relation_type: relation_type.to_string(),
     };
 
