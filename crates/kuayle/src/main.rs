@@ -36,5 +36,32 @@ async fn main() {
         cli::Command::Labels { action } => {
             commands::labels::handle(action, &cli).await;
         }
+        cli::Command::Teams { action } => {
+            commands::teams::handle(action, &cli).await;
+        }
+        cli::Command::Projects { action } => {
+            commands::projects::handle(action, &cli).await;
+        }
+        cli::Command::Cycles { action } => {
+            commands::cycles::handle(action, &cli).await;
+        }
+        cli::Command::Templates { action } => {
+            commands::templates::handle(action, &cli).await;
+        }
+        cli::Command::Views { action } => {
+            commands::views::handle(action, &cli).await;
+        }
+        cli::Command::Members { action } => {
+            commands::members::handle(action, &cli).await;
+        }
+        cli::Command::Favorites { action } => {
+            commands::favorites::handle(action, &cli).await;
+        }
+        cli::Command::Notifications { action } => {
+            commands::notifications::handle(action, &cli).await;
+        }
+        cli::Command::Assets { action } => {
+            commands::assets::handle(action, &cli).await;
+        }
     }
 }

@@ -48,6 +48,42 @@ pub enum Command {
         #[command(subcommand)]
         action: LabelAction,
     },
+    Teams {
+        #[command(subcommand)]
+        action: TeamAction,
+    },
+    Projects {
+        #[command(subcommand)]
+        action: ProjectAction,
+    },
+    Cycles {
+        #[command(subcommand)]
+        action: CycleAction,
+    },
+    Templates {
+        #[command(subcommand)]
+        action: TemplateAction,
+    },
+    Views {
+        #[command(subcommand)]
+        action: ViewAction,
+    },
+    Members {
+        #[command(subcommand)]
+        action: MemberAction,
+    },
+    Favorites {
+        #[command(subcommand)]
+        action: FavoriteAction,
+    },
+    Notifications {
+        #[command(subcommand)]
+        action: NotificationAction,
+    },
+    Assets {
+        #[command(subcommand)]
+        action: AssetAction,
+    },
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -198,4 +234,116 @@ pub enum LabelAction {
     Delete {
         id: String,
     },
+}
+
+// ── M3 resource action enums ───────────────────────────────────────
+// M3 资源 action 枚举
+
+/// Team actions: list teams, read a single team.
+/// 团队操作：列出团队、读取单个团队。
+#[derive(Subcommand, Debug, Clone)]
+pub enum TeamAction {
+    List,
+    Read { id: String },
+}
+
+/// Project actions: list projects, read a single project.
+/// 项目操作：列出项目、读取单个项目。
+#[derive(Subcommand, Debug, Clone)]
+pub enum ProjectAction {
+    List,
+    Read { id: String },
+}
+
+/// Cycle actions: list, read, burndown, velocity (read-only).
+/// 周期操作：list、read、burndown、velocity（只读）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum CycleAction {
+    List {
+        /// Team ID or key (required — cycles are scoped to a team).
+        /// 团队 ID 或 key（必填 — 周期限定在团队范围内）。
+        #[arg(long = "team")]
+        team: String,
+    },
+    Read {
+        #[arg(long = "team")]
+        team: String,
+        id: String,
+    },
+    Burndown {
+        #[arg(long = "team")]
+        team: String,
+        id: String,
+    },
+    Velocity {
+        #[arg(long = "team")]
+        team: String,
+    },
+}
+
+/// Template actions: full CRUD for issue templates.
+/// 模板操作：issue 模板的完整 CRUD。
+#[derive(Subcommand, Debug, Clone)]
+pub enum TemplateAction {
+    List,
+    Read {
+        id: String,
+    },
+    Create {
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        description: Option<String>,
+    },
+    Update {
+        id: String,
+        #[arg(long)]
+        name: Option<String>,
+        #[arg(long)]
+        title: Option<String>,
+        #[arg(long)]
+        description: Option<String>,
+    },
+    Delete {
+        id: String,
+    },
+}
+
+/// View actions: list views, read a single view (read-only).
+/// 视图操作：列出视图、读取单个视图（只读）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum ViewAction {
+    List,
+    Read { id: String },
+}
+
+/// Member actions: list workspace members (read-only).
+/// 成员操作：列出工作区成员（只读）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum MemberAction {
+    List,
+}
+
+/// Favorite actions: list workspace favorites (read-only).
+/// 收藏操作：列出工作区收藏（只读）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum FavoriteAction {
+    List,
+}
+
+/// Notification actions: list user notifications (read-only, user-scoped).
+/// 通知操作：列出用户通知（只读，用户范围）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum NotificationAction {
+    List,
+}
+
+/// Asset actions: read asset info, upload file (upload is a placeholder).
+/// 附件操作：读取附件信息、上传文件（上传为占位）。
+#[derive(Subcommand, Debug, Clone)]
+pub enum AssetAction {
+    Read { id: String },
+    Upload,
 }

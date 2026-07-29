@@ -1,10 +1,19 @@
 // Command modules.
 // 命令模块。
+pub mod assets;
 pub mod auth_cmd;
 pub mod comments;
+pub mod cycles;
+pub mod favorites;
 pub mod issues;
 pub mod labels;
+pub mod members;
+pub mod notifications;
+pub mod projects;
 pub mod relations;
+pub mod teams;
+pub mod templates;
+pub mod views;
 pub mod workspaces;
 
 use kuayle_sdk::client::Client;

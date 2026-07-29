@@ -1,12 +1,12 @@
 // Resource registry and CRUD engine (§6.2).
 // 资源注册表与 CRUD 引擎 (§6.2)。
 #![allow(dead_code)] // Engine wiring in progress
-//
-// Declarative resource specs drive CLI command generation
-// and usage docs. Each resource declares its REST path,
-// ID kind, name resolution strategy, and capabilities.
-// 声明式 resource spec 驱动 CLI 命令生成和 usage 文档。
-// 每个资源声明其 REST 路径、ID 类型、名称解析策略和操作能力。
+                     //
+                     // Declarative resource specs drive CLI command generation
+                     // and usage docs. Each resource declares its REST path,
+                     // ID kind, name resolution strategy, and capabilities.
+                     // 声明式 resource spec 驱动 CLI 命令生成和 usage 文档。
+                     // 每个资源声明其 REST 路径、ID 类型、名称解析策略和操作能力。
 
 use bitflags::bitflags;
 
