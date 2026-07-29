@@ -4,6 +4,7 @@ pub mod client;
 pub mod error;
 pub mod filter;
 pub mod paginate;
+pub mod resources;
 pub mod retry;
 pub mod session;
 pub mod types;

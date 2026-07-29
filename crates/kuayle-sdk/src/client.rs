@@ -85,6 +85,16 @@ impl Client {
         self.execute("DELETE", path, None::<&()>).await
     }
 
+    /// Perform a PATCH request (no retry for non-idempotent).
+    /// 执行 PATCH 请求（非幂等请求不重试）。
+    pub async fn patch<B: Serialize, T: DeserializeOwned>(
+        &self,
+        path: &str,
+        body: &B,
+    ) -> Result<T, KuayleError> {
+        self.execute("PATCH", path, Some(body)).await
+    }
+
     // ── retry-aware execution ──────────────────────────────────────
 
     /// Execute a request with retry logic for idempotent methods.
@@ -155,8 +165,12 @@ impl Client {
 
         let mut req = match method {
             "GET" => self.http.get(url),
-            "POST" => {
-                let mut r = self.http.post(url);
+            "POST" | "PATCH" => {
+                let mut r = if method == "POST" {
+                    self.http.post(url)
+                } else {
+                    self.http.patch(url)
+                };
                 if let Some(b) = body {
                     r = r.json(b);
                 }

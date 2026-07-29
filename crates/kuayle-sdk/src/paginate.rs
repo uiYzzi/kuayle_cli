@@ -192,4 +192,17 @@ impl Client {
 
         PaginationStream::new(self.clone(), path.to_string(), query_value, 100)
     }
+
+    /// Same as `paginate` but accepts a pre-built `serde_json::Value`.
+    /// 与 `paginate` 相同但接受预构建的 `serde_json::Value`。
+    ///
+    /// Avoids lifetime constraints when the query is constructed inline.
+    /// 当 query 是内联构造时避免生命周期约束。
+    pub fn paginate_raw<T: DeserializeOwned + Send + 'static>(
+        &self,
+        path: &str,
+        query: serde_json::Value,
+    ) -> impl Stream<Item = Result<T, KuayleError>> + '_ {
+        PaginationStream::new(self.clone(), path.to_string(), query, 100)
+    }
 }
