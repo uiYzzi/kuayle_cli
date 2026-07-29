@@ -541,3 +541,121 @@ async fn json_error_output_on_auth_failure() {
         .unwrap()
         .contains("bad token"));
 }
+
+// ── Cache hit ≤2 round trips ──────────────────────────────────────
+
+#[tokio::test]
+async fn issue_create_with_cached_names_makes_minimal_requests() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login.
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    // Mock teams list (resolved from "Engineering").
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces/acme/teams"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {"id": "c0", "name": "Engineering", "key": "ENG"}
+        ])))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Mock members list (resolved from "Alice Chen").
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces/acme/members"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {"user_id": "a0", "name": "Alice Chen", "email": "a@b.com", "role": "owner"}
+        ])))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Mock labels list (resolved from "Bug").
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces/acme/labels"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {"id": "d0", "name": "Bug", "color": "#f00"}
+        ])))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    // Create mock — both invocations hit this (second uses cache for resolves).
+    // 创建 mock — 两次调用都命中此 mock（第二次通过缓存解析名称）。
+    Mock::given(method("POST"))
+        .and(path("/api/workspaces/acme/issues"))
+        .respond_with(ResponseTemplate::new(201).set_body_json(json!({
+            "id": "i1", "identifier": "ENG-1", "title": "test",
+            "status": "backlog", "status_id": "s0", "priority": 3,
+            "team_id": "c0", "creator_id": "u0", "sort_order": 0,
+            "labels": [], "assignees": [], "is_subscribed": false,
+            "created_at": "2026-01-01T00:00:00Z", "updated_at": "2026-01-01T00:00:00Z"
+        })))
+        .expect(2) // both creates / 两次创建
+        .mount(&server)
+        .await;
+
+    // First create — resolves names (teams + members + labels = 3 resolve requests).
+    // 第一次创建 — 解析名称（teams + members + labels = 3 个解析请求）。
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args([
+        "issues",
+        "create",
+        "--workspace",
+        "acme",
+        "--title",
+        "test",
+        "--team",
+        "Engineering",
+        "--assignee",
+        "Alice Chen",
+        "--labels",
+        "Bug",
+        "--priority",
+        "3",
+    ]);
+    cmd.assert().success();
+
+    // Second create — with disk cache, only POST create (0 extra resolve requests).
+    // Wiremock total: 1 auth + 3 resolves + 2 creates = 6.
+    // 第二次创建 — 磁盘缓存命中，仅 POST create（0 个额外解析请求）。
+    // Wiremock 总计：1 auth + 3 resolves + 2 creates = 6。
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args([
+        "issues",
+        "create",
+        "--workspace",
+        "acme",
+        "--title",
+        "test2",
+        "--team",
+        "Engineering",
+        "--assignee",
+        "Alice Chen",
+        "--labels",
+        "Bug",
+        "--priority",
+        "3",
+    ]);
+    cmd.assert().success();
+
+    // Verification: total requests = 1(auth) + 1(teams) + 1(members) + 1(labels) + 2(creates) = 6.
+    // The second invocation made exactly 1 network request (only POST create).
+    // 验证：总请求 = 1(auth) + 1(teams) + 1(members) + 1(labels) + 2(creates) = 6。
+    // 第二次调用仅发起 1 个网络请求（仅 POST create）。
+}
