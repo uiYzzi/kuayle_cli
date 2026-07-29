@@ -41,6 +41,7 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
             labels,
             project,
             cycle,
+            parent,
         } => {
             cmd_create(
                 cli,
@@ -52,6 +53,7 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
                 labels.as_ref(),
                 project.as_deref(),
                 cycle.as_deref(),
+                parent.as_deref(),
             )
             .await
         }
@@ -63,6 +65,7 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
             priority,
             assignee,
             labels,
+            parent,
         } => {
             cmd_update(
                 cli,
@@ -73,6 +76,7 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
                 *priority,
                 assignee.as_ref(),
                 labels.as_ref(),
+                parent.as_deref(),
             )
             .await
         }
@@ -86,6 +90,13 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
         IssueAction::Subscribe { identifier } => cmd_subscribe(cli, identifier).await,
         IssueAction::Unsubscribe { identifier } => cmd_unsubscribe(cli, identifier).await,
         IssueAction::History { identifier } => cmd_history(cli, identifier).await,
+        IssueAction::SubIssuesList { identifier } => cmd_sub_issues_list(cli, identifier).await,
+        IssueAction::SubIssuesCreate {
+            identifier,
+            title,
+            description,
+            priority,
+        } => cmd_sub_issues_create(cli, identifier, title, description.as_deref(), *priority).await,
     }
 }
 
@@ -221,6 +232,7 @@ async fn cmd_create(
     labels: Option<&Vec<String>>,
     project: Option<&str>,
     cycle: Option<&str>,
+    parent: Option<&str>,
 ) {
     let (issues, resolver, is_json) = setup(cli).await;
 
@@ -263,6 +275,14 @@ async fn cmd_create(
         Err(e) => output::print_string_error(&e, 3, is_json),
     };
 
+    // Resolve parent issue identifier to UUID.
+    // 将父 issue identifier 解析为 UUID。
+    let parent_id = if let Some(parent_identifier) = parent {
+        Some(resolve_parent_identifier(&issues, parent_identifier, is_json).await)
+    } else {
+        None
+    };
+
     let req = CreateIssueRequest {
         title: title.to_string(),
         description: description.map(|d| d.to_string()),
@@ -272,6 +292,7 @@ async fn cmd_create(
         label_ids,
         project_id,
         cycle_id,
+        parent_id,
         ..Default::default()
     };
 
@@ -305,6 +326,7 @@ async fn cmd_update(
     priority: Option<i32>,
     assignee: Option<&Vec<String>>,
     labels: Option<&Vec<String>>,
+    parent: Option<&str>,
 ) {
     let (issues, resolver, is_json) = setup(cli).await;
 
@@ -328,6 +350,14 @@ async fn cmd_update(
     // Status 解析：如果已知 team，先尝试自定义状态，再尝试内置枚举。
     let resolved_status = status.map(|s| resolve_status_builtin(s, is_json));
 
+    // Resolve parent issue identifier to UUID.
+    // 将父 issue identifier 解析为 UUID。
+    let parent_id = if let Some(parent_identifier) = parent {
+        Some(resolve_parent_identifier(&issues, parent_identifier, is_json).await)
+    } else {
+        None
+    };
+
     let req = UpdateIssueRequest {
         title: title.map(|s| s.to_string()),
         description: description.map(|s| s.to_string()),
@@ -335,6 +365,7 @@ async fn cmd_update(
         priority,
         assignee_ids,
         label_ids,
+        parent_id,
         ..Default::default()
     };
 
@@ -440,6 +471,85 @@ async fn cmd_history(cli: &Cli, identifier: &str) {
     }
 }
 
+// ── sub-issues ─────────────────────────────────────────────────────
+
+async fn cmd_sub_issues_list(cli: &Cli, identifier: &str) {
+    let is_json = is_json_output(cli);
+    let (client, _url) = match crate::commands::resolve_client(cli).await {
+        Ok(c) => c,
+        Err(e) => output::print_string_error(&e, 2, is_json),
+    };
+    let ws = cli.workspace.as_deref().unwrap_or("acme");
+    let path = format!("/api/workspaces/{ws}/issues/{identifier}/sub-issues");
+    // Note: sub-issues endpoint returns a plain array, not ListResponse.
+    // 注意：sub-issues 端点返回纯数组，而非 ListResponse。
+    let items: Vec<IssueResponse> = match client.get(&path).await {
+        Ok(v) => v,
+        Err(e) => {
+            output::print_error(&e, is_json);
+            std::process::exit(e.exit_code());
+        }
+    };
+    if is_json {
+        println!(
+            "{}",
+            serde_json::to_string_pretty(&items).unwrap_or_default()
+        );
+    } else {
+        if items.is_empty() {
+            println!("No sub-issues found.");
+            return;
+        }
+        for issue in &items {
+            println!(
+                "{:<12} {:<60} {:<12}",
+                issue.identifier,
+                truncate(&issue.title, 58),
+                priority_label(issue.priority)
+            );
+        }
+        println!("\n{} sub-issue(s)", items.len());
+    }
+}
+
+async fn cmd_sub_issues_create(
+    cli: &Cli,
+    identifier: &str,
+    title: &str,
+    description: Option<&str>,
+    priority: Option<i32>,
+) {
+    let is_json = is_json_output(cli);
+    let (client, _url) = match crate::commands::resolve_client(cli).await {
+        Ok(c) => c,
+        Err(e) => output::print_string_error(&e, 2, is_json),
+    };
+    let ws = cli.workspace.as_deref().unwrap_or("acme");
+    let path = format!("/api/workspaces/{}/issues/{}/sub-issues", ws, identifier);
+    let req = CreateIssueRequest {
+        title: title.to_string(),
+        description: description.map(|d| d.to_string()),
+        priority,
+        ..Default::default()
+    };
+    match client.post::<_, IssueResponse>(&path, &req).await {
+        Ok(issue) => {
+            if is_json {
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&issue).unwrap_or_default()
+                );
+            } else {
+                println!("✓ Created sub-issue {}: {}", issue.identifier, issue.title);
+            }
+        }
+        Err(e) => {
+            output::print_error(&e, is_json);
+            std::process::exit(e.exit_code());
+        }
+    }
+}
+
 // ── resolution helpers ────────────────────────────────────────────
 
 /// Resolve a single optional name to an ID. UUIDs pass through.
@@ -476,6 +586,27 @@ async fn resolve_many(
                 ids.push(resolver.resolve(kind, name).await?);
             }
             Ok(Some(ids))
+        }
+    }
+}
+
+/// Resolve a parent issue identifier (e.g. "ENG-25") to its UUID.
+/// The backend requires `parent_id` to be a UUID.
+/// 将父 issue identifier（如 "ENG-25"）解析为其 UUID。
+/// 后端要求 `parent_id` 是 UUID。
+async fn resolve_parent_identifier(issues: &Issues, identifier: &str, is_json: bool) -> String {
+    // If already looks like a UUID, use directly.
+    // 如果看起来已经是 UUID，直接使用。
+    if identifier.contains('-') && identifier.len() >= 32 {
+        return identifier.to_string();
+    }
+    // Otherwise, read the parent issue to get its UUID.
+    // 否则，读取父 issue 获取其 UUID。
+    match issues.read(identifier).await {
+        Ok(issue) => issue.id,
+        Err(e) => {
+            output::print_error(&e, is_json);
+            std::process::exit(e.exit_code());
         }
     }
 }

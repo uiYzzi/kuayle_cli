@@ -27,6 +27,12 @@ impl Issues {
         }
     }
 
+    /// Return the workspace slug this Issues instance is scoped to.
+    /// 返回此 Issues 实例所限定范围的 workspace slug。
+    pub fn workspace(&self) -> &str {
+        &self.workspace
+    }
+
     fn path(&self, suffix: &str) -> String {
         format!("/api/workspaces/{}/issues{}", self.workspace, suffix)
     }

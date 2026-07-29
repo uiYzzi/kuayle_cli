@@ -36,6 +36,10 @@ kuayle — 自托管 issue tracker kuayle 的命令行工具
   kuayle issues subscribe
   kuayle issues unsubscribe
   kuayle issues history
+  kuayle issues sub-issues-list
+    List sub-issues / 列出子 issue
+  kuayle issues sub-issues-create
+    Create a sub-issue / 创建子 issue
   kuayle comments list
   kuayle comments create
   kuayle comments resolve

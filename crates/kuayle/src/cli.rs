@@ -149,6 +149,9 @@ pub enum IssueAction {
         project: Option<String>,
         #[arg(long)]
         cycle: Option<String>,
+        /// Parent issue identifier (e.g. ENG-25) / 父 issue identifier
+        #[arg(long)]
+        parent: Option<String>,
     },
     Update {
         identifier: String,
@@ -164,6 +167,9 @@ pub enum IssueAction {
         assignee: Option<Vec<String>>,
         #[arg(long)]
         labels: Option<Vec<String>>,
+        /// Parent issue identifier / 父 issue identifier
+        #[arg(long)]
+        parent: Option<String>,
     },
     Delete {
         identifier: String,
@@ -186,6 +192,20 @@ pub enum IssueAction {
     },
     History {
         identifier: String,
+    },
+    /// List sub-issues / 列出子 issue
+    SubIssuesList {
+        identifier: String,
+    },
+    /// Create a sub-issue / 创建子 issue
+    SubIssuesCreate {
+        identifier: String,
+        #[arg(long)]
+        title: String,
+        #[arg(long)]
+        description: Option<String>,
+        #[arg(long)]
+        priority: Option<i32>,
     },
 }
 
