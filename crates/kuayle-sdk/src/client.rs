@@ -26,6 +26,7 @@ use crate::session::Session;
 
 /// Kuayle API client.
 /// Kuayle API 客户端。
+#[derive(Clone)]
 pub struct Client {
     http: reqwest::Client,
     base_url: Url,
