@@ -149,9 +149,11 @@ pub enum CommentAction {
         body: String,
     },
     Resolve {
+        issue: String,
         id: String,
     },
     Reopen {
+        issue: String,
         id: String,
     },
 }
