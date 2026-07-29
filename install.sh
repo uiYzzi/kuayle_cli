@@ -22,16 +22,20 @@ case "$OS" in
     *) echo "Unsupported OS: $OS" >&2; exit 1 ;;
 esac
 
-BINARY="kuayle-${TARGET}"
+ARCHIVE="kuayle-${TARGET}.tar.gz"
 if [ "$VERSION" = "latest" ]; then
-    URL="https://github.com/${REPO}/releases/latest/download/${BINARY}"
+    URL="https://github.com/${REPO}/releases/latest/download/${ARCHIVE}"
 else
-    URL="https://github.com/${REPO}/releases/download/${VERSION}/${BINARY}"
+    URL="https://github.com/${REPO}/releases/download/${VERSION}/${ARCHIVE}"
 fi
 
 echo "Installing kuayle to ${INSTALL_DIR}..."
 mkdir -p "${INSTALL_DIR}"
-curl -fsSL "${URL}" -o "${INSTALL_DIR}/kuayle"
+TMP=$(mktemp -d)
+trap 'rm -rf "${TMP}"' EXIT
+curl -fsSL "${URL}" -o "${TMP}/kuayle.tar.gz"
+tar xzf "${TMP}/kuayle.tar.gz" -C "${TMP}"
+mv "${TMP}/kuayle" "${INSTALL_DIR}/kuayle"
 chmod +x "${INSTALL_DIR}/kuayle"
 echo "✓ kuayle installed to ${INSTALL_DIR}/kuayle"
 echo ""
