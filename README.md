@@ -1,5 +1,7 @@
 # kuayle-cli
 
+English | [中文](README.zh-CN.md)
+
 CLI and Rust SDK for [kuayle](https://github.com/carbogninalberto/kuayle) — the self-hosted, open-source issue tracker. Built for humans **and** coding agents.
 
 Inspired by [lineark](https://github.com/flipbit03/lineark) (Linear CLI), redesigned for kuayle's REST API and self-hosted deployments.
@@ -19,6 +21,12 @@ A kuayle server with Personal Access Token support — see [kuayle#51](https://g
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/uiYzzi/kuayle_cli/main/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/uiYzzi/kuayle_cli/main/install.ps1 | iex
 ```
 
 Or via cargo: `cargo install --git https://github.com/uiYzzi/kuayle_cli kuayle`
