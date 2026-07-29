@@ -60,7 +60,13 @@ kuayle auth login --token "$KUAYLE_TOKEN"
 
 ## 接入你的 AI agent
 
-把下面几行加入 agent 的上下文文件(`CLAUDE.md`、`AGENTS.md`、system prompt 等):
+安装内置的 agent skill(兼容 [skills](https://skills.sh)):
+
+```sh
+npx skills add uiYzzi/kuayle_cli
+```
+
+或者把下面几行加入 agent 的上下文文件(`CLAUDE.md`、`AGENTS.md`、system prompt 等):
 
 ```
 We track our tickets and projects in kuayle, a self-hosted issue tracker.

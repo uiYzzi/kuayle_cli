@@ -58,7 +58,13 @@ kuayle auth login --token "$KUAYLE_TOKEN"
 
 ## Set up your AI agent
 
-Add these lines to your agent's context file (`CLAUDE.md`, `AGENTS.md`, system prompt, etc.):
+Install the bundled agent skill ([skills](https://skills.sh) compatible):
+
+```sh
+npx skills add uiYzzi/kuayle_cli
+```
+
+Or add these lines to your agent's context file (`CLAUDE.md`, `AGENTS.md`, system prompt, etc.):
 
 ```
 We track our tickets and projects in kuayle, a self-hosted issue tracker.
