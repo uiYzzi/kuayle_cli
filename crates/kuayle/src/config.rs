@@ -6,7 +6,7 @@
 // 读取 `~/.config/kuayle/config.toml`，基于 profile 的设置。
 // 每个 profile 绑定实例 URL 和可选的默认工作区。
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -20,7 +20,7 @@ use std::path::PathBuf;
 /// url = "https://kuayle.example.com"
 /// workspace = "acme"
 /// ```
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Deserialize, Serialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub default_profile: Option<String>,
@@ -35,7 +35,7 @@ pub struct Config {
 /// Credentials are NOT stored here — they go to the keychain
 /// via `CredentialStore`.
 /// 凭据不在此存储 — 它们通过 `CredentialStore` 存入 keychain。
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ProfileConfig {
     /// Base URL of the kuayle instance (e.g. `http://localhost:5173`).
     /// kuayle 实例的 base URL（如 `http://localhost:5173`）。

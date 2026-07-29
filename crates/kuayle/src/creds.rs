@@ -105,13 +105,16 @@ impl KeychainCredentialStore {
     /// Try to create a new keychain store. Returns Err if keychain is unavailable.
     /// 尝试创建新的 keychain 存储。如果 keychain 不可用则返回 Err。
     pub fn try_new() -> Result<Self, String> {
-        // Verify keychain access works by probing with a dummy credential.
-        // 通过探测虚拟凭据验证 keychain 访问是否可用。
-        let entry =
+        let probe_entry =
             keyring::Entry::new(Self::SERVICE, "kuayle_probe").map_err(|e| e.to_string())?;
-        // Just checking we can construct an entry is enough — actual read/write tested at use time.
-        // 能构造 entry 就足够了 — 实际的读写在使用时测试。
-        let _ = entry.get_password(); // ignore failure here
+
+        // Actually try to write and delete to verify the keychain works.
+        // 实际尝试写入和删除以验证 keychain 可用。
+        probe_entry
+            .set_password("probe")
+            .map_err(|e| format!("keychain unavailable: {e}"))?;
+        let _ = probe_entry.delete_credential();
+
         Ok(KeychainCredentialStore)
     }
 }
