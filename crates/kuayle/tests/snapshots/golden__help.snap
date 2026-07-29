@@ -1,0 +1,39 @@
+---
+source: crates/kuayle/tests/golden.rs
+expression: stdout
+---
+CLI for the kuayle self-hosted issue tracker
+
+Usage: kuayle [OPTIONS] <COMMAND>
+
+Commands:
+  auth           
+  whoami         
+  workspaces     
+  issues         
+  comments       
+  relations      
+  labels         
+  teams          Team actions: list teams, read a single team. 团队操作：列出团队、读取单个团队。
+  statuses       Statuses actions: list statuses for a team. 状态操作：列出团队的状态。
+  projects       Project actions: list projects, read a single project. 项目操作：列出项目、读取单个项目。
+  cycles         Cycle actions: list, read, burndown, velocity (read-only). 周期操作：list、read、burndown、velocity（只读）。
+  templates      Template actions: full CRUD for issue templates. 模板操作：issue 模板的完整 CRUD。
+  views          View actions: list views, read a single view (read-only). 视图操作：列出视图、读取单个视图（只读）。
+  members        Member actions: list workspace members (read-only). 成员操作：列出工作区成员（只读）。
+  favorites      Favorite actions: list workspace favorites (read-only). 收藏操作：列出工作区收藏（只读）。
+  notifications  Notification actions: list user notifications (read-only, user-scoped). 通知操作：列出用户通知（只读，用户范围）。
+  assets         Asset actions: read asset info, upload file (upload is a placeholder). 附件操作：读取附件信息、上传文件（上传为占位）。
+  usage          Show command reference / 显示命令参考
+  completion     Generate shell completion script / 生成 shell 补全脚本
+  self-update    Check for updates or update the binary / 检查更新或更新二进制
+  help           Print this message or the help of the given subcommand(s)
+
+Options:
+      --profile <PROFILE>      [env: KUAYLE_PROFILE=]
+      --url <URL>              [env: KUAYLE_URL=]
+      --workspace <WORKSPACE>  [env: KUAYLE_WORKSPACE=]
+      --format <FORMAT>        [default: auto]
+      --no-cache               Disable resolve disk cache / 禁用解析磁盘缓存 [env: KUAYLE_NO_CACHE=]
+  -h, --help                   Print help
+  -V, --version                Print version

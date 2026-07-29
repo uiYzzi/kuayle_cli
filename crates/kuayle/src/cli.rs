@@ -90,6 +90,12 @@ pub enum Command {
     },
     /// Show command reference / 显示命令参考
     Usage,
+    /// Generate shell completion script / 生成 shell 补全脚本
+    Completion {
+        shell: String,
+    },
+    /// Check for updates or update the binary / 检查更新或更新二进制
+    SelfUpdate,
 }
 
 #[derive(Subcommand, Debug, Clone)]

@@ -1,0 +1,109 @@
+---
+source: crates/kuayle/tests/golden.rs
+expression: stdout
+---
+kuayle — CLI for the kuayle self-hosted issue tracker
+kuayle — 自托管 issue tracker kuayle 的命令行工具
+
+## Global Flags / 全局标志
+
+  --profile <NAME>     Profile to use (env: KUAYLE_PROFILE)
+  --url <URL>          Override instance URL (env: KUAYLE_URL)
+  --workspace <SLUG>   Override workspace slug (env: KUAYLE_WORKSPACE)
+  --format human|json   Output format (default: auto-detect tty)
+  --no-cache            Disable resolve disk cache (env: KUAYLE_NO_CACHE)
+
+## Authentication / 认证
+
+  kuayle auth login --token <PAT>     Login with Personal Access Token
+  kuayle auth logout                   Remove stored credentials
+  kuayle auth status                   Show authentication status
+
+## Commands / 命令
+
+  kuayle auth login
+  kuayle auth logout
+  kuayle auth status
+  kuayle whoami
+  kuayle workspaces list
+  kuayle issues list
+  kuayle issues read
+  kuayle issues create
+  kuayle issues update
+  kuayle issues delete
+  kuayle issues batch-update
+  kuayle issues batch-delete
+  kuayle issues subscribe
+  kuayle issues unsubscribe
+  kuayle issues history
+  kuayle comments list
+  kuayle comments create
+  kuayle comments resolve
+  kuayle comments reopen
+  kuayle relations list
+  kuayle relations create
+  kuayle relations delete
+  kuayle labels list
+  kuayle labels create
+  kuayle labels update
+  kuayle labels delete
+  kuayle teams list
+  kuayle teams read
+  kuayle statuses list
+  kuayle projects list
+  kuayle projects read
+  kuayle cycles list
+  kuayle cycles read
+  kuayle cycles burndown
+  kuayle cycles velocity
+  kuayle templates list
+  kuayle templates read
+  kuayle templates create
+  kuayle templates update
+  kuayle templates delete
+  kuayle views list
+  kuayle views read
+  kuayle members list
+  kuayle favorites list
+  kuayle notifications list
+  kuayle assets list
+  kuayle assets read
+  kuayle assets upload
+  kuayle assets download
+  kuayle usage
+    Show command reference / 显示命令参考
+  kuayle completion
+    Generate shell completion script / 生成 shell 补全脚本
+  kuayle self-update
+    Check for updates or update the binary / 检查更新或更新二进制
+## Name Resolution / 名称解析
+
+  Names accept: UUID (passthrough), human-readable name, or identifier.
+  Names resolved via batch fetch + case-insensitive match.
+  In-process memo + disk cache (5min TTL, --no-cache to disable).
+  Multiple names resolved in parallel (tokio::join!).
+  On failure: lists available candidates, exit code 3.
+
+  名称接受：UUID（直通）、人类可读名称或 identifier。
+  名称通过批量抓取 + 大小写不敏感匹配解析。
+  进程内 memo + 磁盘缓存（5 分钟 TTL，--no-cache 可禁）。
+  多个名称并发解析（tokio::join!）。
+  失败时列出可用候选，退出码 3。
+
+## Exit Codes / 退出码
+
+  0  Success / 成功
+  1  Generic error / 未分类错误
+  2  Authentication failure / 认证失败
+  3  Resource not found / 资源未找到
+  4  Validation error / 参数校验失败
+  5  Permission denied / 权限不足
+  6  Rate limited / 被限流
+  7  Network / server unreachable / 网络/服务端不可达
+
+## Output Format / 输出格式
+
+  --format human   Human-readable tables and text (default when TTY).
+  --format json    Machine-readable JSON.
+  Default: auto-detect — JSON when piped, human when interactive.
+  JSON mode: errors are also JSON.

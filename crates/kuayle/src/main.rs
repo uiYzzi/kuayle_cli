@@ -2,12 +2,14 @@
 // kuayle CLI 入口点。
 mod cli;
 mod commands;
+mod completion;
 mod config;
 mod creds;
 mod engine;
 mod output;
 mod registry;
 mod resolve;
+mod update;
 mod usage;
 
 use clap::{CommandFactory, Parser};
@@ -15,6 +17,12 @@ use clap::{CommandFactory, Parser};
 #[tokio::main]
 async fn main() {
     let cli = cli::Cli::parse();
+
+    // Check for updates on startup (cached, 24h TTL).
+    // 启动时检查更新（缓存，24 小时 TTL）。
+    if let Some(ver) = cli::Cli::command().get_version() {
+        update::check_version(ver);
+    }
 
     match &cli.command {
         cli::Command::Auth { action } => {
@@ -70,6 +78,21 @@ async fn main() {
         }
         cli::Command::Usage => {
             println!("{}", usage::generate(&cli::Cli::command()));
+        }
+        cli::Command::Completion { shell } => match completion::generate_completion(shell) {
+            Ok(script) => println!("{script}"),
+            Err(e) => {
+                eprintln!("{e}");
+                std::process::exit(1);
+            }
+        },
+        cli::Command::SelfUpdate => {
+            if let Some(ver) = cli::Cli::command().get_version() {
+                update::self_update(ver).await.unwrap_or_else(|e| {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                });
+            }
         }
     }
 }
