@@ -27,7 +27,8 @@ fn setup_home() -> TempDir {
 fn kuayle_cmd(home: &TempDir, server_uri: &str) -> Command {
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
     cmd.env("HOME", home.path())
-        .env("KUAYLE_URL", server_uri);
+        .env("KUAYLE_URL", server_uri)
+        .env("KUAYLE_CREDENTIAL_STORE", "file");
     cmd
 }
 
@@ -48,7 +49,10 @@ fn user_json() -> serde_json::Value {
 fn auth_status_not_logged_in() {
     let home = setup_home();
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
-    cmd.env("HOME", home.path()).arg("auth").arg("status");
+    cmd.env("HOME", home.path())
+        .env("KUAYLE_CREDENTIAL_STORE", "file")
+        .arg("auth")
+        .arg("status");
 
     cmd.assert()
         .failure()
@@ -187,7 +191,10 @@ async fn auth_logout_removes_session() {
 
     // Verify status shows not logged in.
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
-    cmd.env("HOME", home.path()).arg("auth").arg("status");
+    cmd.env("HOME", home.path())
+        .env("KUAYLE_CREDENTIAL_STORE", "file")
+        .arg("auth")
+        .arg("status");
     cmd.assert()
         .failure()
         .code(predicate::eq(2));
@@ -238,7 +245,9 @@ async fn whoami_not_logged_in_fails() {
     let home = setup_home();
 
     let mut cmd = Command::cargo_bin("kuayle").unwrap();
-    cmd.env("HOME", home.path()).arg("whoami");
+    cmd.env("HOME", home.path())
+        .env("KUAYLE_CREDENTIAL_STORE", "file")
+        .arg("whoami");
 
     cmd.assert()
         .failure()
@@ -285,4 +294,141 @@ async fn whoami_json_output() {
     // 应为有效 JSON。
     let parsed: serde_json::Value = serde_json::from_str(&stdout).unwrap();
     assert_eq!(parsed["email"], "alice@kuayle.dev");
+}
+
+// ── workspaces list ────────────────────────────────────────────────
+
+#[tokio::test]
+async fn workspaces_list_human_output() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login.
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    // workspaces list
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {
+                "id": "w1",
+                "name": "Acme Corp",
+                "slug": "acme",
+                "logo_url": null,
+                "owner_id": "u1",
+                "owner": {
+                    "id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null
+                },
+                "share_link_min_role": "admin",
+                "current_user_role": "owner",
+                "created_at": "2026-07-28T15:58:38+08:00",
+                "updated_at": "2026-07-28T15:58:38+08:00"
+            }
+        ])))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["workspaces", "list", "--format", "human"]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("Acme Corp"))
+        .stdout(predicate::str::contains("acme"))
+        .stdout(predicate::str::contains("owner"))
+        .stdout(predicate::str::contains("1 workspace"));
+}
+
+#[tokio::test]
+async fn workspaces_list_json_output() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login.
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([
+            {
+                "id": "w1",
+                "name": "Acme Corp",
+                "slug": "acme",
+                "logo_url": null,
+                "owner_id": "u1",
+                "owner": {
+                    "id": "u1", "email": "a@b.com", "name": "Alice", "avatar_url": null
+                },
+                "share_link_min_role": "admin",
+                "current_user_role": "owner",
+                "created_at": "2026-07-28T15:58:38+08:00",
+                "updated_at": "2026-07-28T15:58:38+08:00"
+            }
+        ])))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["workspaces", "list", "--format", "json"]);
+
+    let output = cmd.assert().success();
+    let stdout = String::from_utf8_lossy(&output.get_output().stdout);
+    let parsed: Vec<serde_json::Value> = serde_json::from_str(&stdout).unwrap();
+    assert_eq!(parsed.len(), 1);
+    assert_eq!(parsed[0]["slug"], "acme");
+}
+
+#[tokio::test]
+async fn workspaces_list_empty() {
+    let home = setup_home();
+    let server = MockServer::start().await;
+
+    // Login.
+    Mock::given(method("GET"))
+        .and(path("/api/auth/me"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
+        .up_to_n_times(1)
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["auth", "login", "--token", "kuayle_pat_test123"]);
+    cmd.assert().success();
+
+    Mock::given(method("GET"))
+        .and(path("/api/workspaces"))
+        .respond_with(ResponseTemplate::new(200).set_body_json(json!([])))
+        .expect(1)
+        .mount(&server)
+        .await;
+
+    let mut cmd = kuayle_cmd(&home, &server.uri());
+    cmd.args(["workspaces", "list", "--format", "human"]);
+
+    cmd.assert()
+        .success()
+        .stdout(predicate::str::contains("No workspaces found"));
 }

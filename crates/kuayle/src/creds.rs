@@ -160,8 +160,14 @@ impl CredentialStore for KeychainCredentialStore {
 /// 获取最佳可用的凭据存储。
 ///
 /// Tries keychain first; falls back to file-based storage with a warning.
+/// Set `KUAYLE_CREDENTIAL_STORE=file` to force file-based storage (for testing).
 /// 先尝试 keychain；失败则降级到文件存储并打印警告。
+/// 设置 `KUAYLE_CREDENTIAL_STORE=file` 强制使用文件存储（用于测试）。
 pub fn get_credential_store() -> Result<Box<dyn CredentialStore>, String> {
+    if std::env::var("KUAYLE_CREDENTIAL_STORE").as_deref() == Ok("file") {
+        return Ok(Box::new(FileCredentialStore::new()?));
+    }
+
     match KeychainCredentialStore::try_new() {
         Ok(store) => Ok(Box::new(store)),
         Err(_) => {
