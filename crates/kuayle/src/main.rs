@@ -8,8 +8,9 @@ mod engine;
 mod output;
 mod registry;
 mod resolve;
+mod usage;
 
-use clap::Parser;
+use clap::{CommandFactory, Parser};
 
 #[tokio::main]
 async fn main() {
@@ -66,6 +67,9 @@ async fn main() {
         }
         cli::Command::Assets { action } => {
             commands::assets::handle(action, &cli).await;
+        }
+        cli::Command::Usage => {
+            println!("{}", usage::generate(&cli::Cli::command()));
         }
     }
 }

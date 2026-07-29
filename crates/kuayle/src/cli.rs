@@ -88,6 +88,8 @@ pub enum Command {
         #[command(subcommand)]
         action: AssetAction,
     },
+    /// Show command reference / 显示命令参考
+    Usage,
 }
 
 #[derive(Subcommand, Debug, Clone)]
