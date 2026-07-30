@@ -632,10 +632,14 @@ fn resolve_status_builtin(status: &str, _is_json: bool) -> String {
 // ── display helpers ───────────────────────────────────────────────
 
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max - 1])
+        // Truncate by chars, not bytes — slicing at an arbitrary byte index
+        // panics inside multi-byte UTF-8 characters (e.g. CJK titles).
+        // 按字符数截断而非字节数——按字节下标切片会在多字节 UTF-8 字符(如中文标题)内部 panic。
+        let kept: String = s.chars().take(max - 1).collect();
+        format!("{kept}…")
     }
 }
 
@@ -656,5 +660,22 @@ fn priority_from_int(p: i32) -> Priority {
         3 => Priority::Medium,
         4 => Priority::Low,
         _ => Priority::None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate;
+
+    #[test]
+    fn truncate_handles_multibyte_utf8() {
+        // CJK characters are 3 bytes each; byte-based slicing panics here.
+        // 每个中文字符占 3 字节,按字节切片会在这里 panic。
+        let s = "Wave 3: 飞书连接器拆分";
+        assert_eq!(truncate(s, 12), "Wave 3: 飞书连…");
+        // Short strings pass through unchanged. / 短字符串原样返回。
+        assert_eq!(truncate("短", 5), "短");
+        // Exactly at limit passes through. / 正好达到上限原样返回。
+        assert_eq!(truncate("abcde", 5), "abcde");
     }
 }

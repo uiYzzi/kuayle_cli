@@ -150,9 +150,23 @@ async fn cmd_delete(cli: &Cli, issue: &str, id: &str) {
 /// Truncate a string to `max` chars, appending "…" if truncated.
 /// 将字符串截断到 `max` 个字符，超出则追加 "…"。
 fn truncate(s: &str, max: usize) -> String {
-    if s.len() <= max {
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max.saturating_sub(1)])
+        // Truncate by chars, not bytes — byte slicing panics inside multi-byte UTF-8.
+        // 按字符数截断而非字节数——按字节切片会在多字节 UTF-8 字符内部 panic。
+        let kept: String = s.chars().take(max.saturating_sub(1)).collect();
+        format!("{kept}…")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::truncate;
+
+    #[test]
+    fn truncate_handles_multibyte_utf8() {
+        assert_eq!(truncate("Wave 4: 通知通道抽象", 12), "Wave 4: 通知通…");
+        assert_eq!(truncate("短", 5), "短");
     }
 }

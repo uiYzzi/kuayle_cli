@@ -260,10 +260,13 @@ fn assets_detail(item: &Value) {
 
 fn truncate_str(item: &Value, key: &str, max: usize) -> String {
     let s = item[key].as_str().unwrap_or("-");
-    if s.len() <= max {
+    if s.chars().count() <= max {
         s.to_string()
     } else {
-        format!("{}…", &s[..max - 1])
+        // Truncate by chars, not bytes — byte slicing panics inside multi-byte UTF-8.
+        // 按字符数截断而非字节数——按字节切片会在多字节 UTF-8 字符内部 panic。
+        let kept: String = s.chars().take(max - 1).collect();
+        format!("{kept}…")
     }
 }
 
@@ -367,3 +370,16 @@ pub static RESOURCES: &[ResourceSpec] = &[
         detail_fn: assets_detail,
     },
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::truncate_str;
+
+    #[test]
+    fn truncate_str_handles_multibyte_utf8() {
+        let v = serde_json::json!({"title": "Wave 5: 前端通用化设计"});
+        assert_eq!(truncate_str(&v, "title", 12), "Wave 5: 前端通…");
+        let short = serde_json::json!({"title": "短"});
+        assert_eq!(truncate_str(&short, "title", 5), "短");
+    }
+}
