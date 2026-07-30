@@ -120,10 +120,17 @@ pub enum IssueAction {
         status: Option<String>,
         #[arg(long)]
         priority: Option<i32>,
+        /// Assignee email, name, UUID, or "me" / 指派人邮箱、名称、UUID 或 "me"
         #[arg(long)]
         assignee: Option<String>,
         #[arg(long)]
         label: Option<String>,
+        #[arg(long)]
+        team: Option<String>,
+        #[arg(long)]
+        project: Option<String>,
+        #[arg(long)]
+        cycle: Option<String>,
         #[arg(long)]
         search: Option<String>,
         #[arg(long)]

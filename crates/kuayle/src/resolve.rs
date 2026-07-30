@@ -107,6 +107,13 @@ impl Resolver {
                         mapping.insert(key.to_lowercase(), id.to_string());
                     }
                 }
+                // Index members by email too / 成员也按 email 索引
+                if kind == ResolveKind::Members {
+                    if let Some(email) = item["email"].as_str() {
+                        mapping.insert(email.to_string(), id.to_string());
+                        mapping.insert(email.to_lowercase(), id.to_string());
+                    }
+                }
             }
         }
         let mut memo = self.memo.lock().unwrap();

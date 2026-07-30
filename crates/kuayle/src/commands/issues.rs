@@ -9,6 +9,7 @@ use kuayle_sdk::types::issue::{CreateIssueRequest, IssueResponse, UpdateIssueReq
 use crate::cli::{Cli, IssueAction};
 use crate::output::{self, is_json_output};
 use crate::resolve::{ResolveKind, Resolver};
+use kuayle_sdk::types::user::UserResponse;
 
 pub async fn handle(action: &IssueAction, cli: &Cli) {
     match action {
@@ -17,6 +18,9 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
             priority,
             assignee,
             label,
+            team,
+            project,
+            cycle,
             search,
             all,
         } => {
@@ -26,6 +30,9 @@ pub async fn handle(action: &IssueAction, cli: &Cli) {
                 *priority,
                 assignee.as_deref(),
                 label.as_deref(),
+                team.as_deref(),
+                project.as_deref(),
+                cycle.as_deref(),
                 search.as_deref(),
                 *all,
             )
@@ -114,16 +121,29 @@ async fn setup(cli: &Cli) -> (Issues, Resolver, bool) {
 
 // ── list ──────────────────────────────────────────────────────────
 
+#[allow(clippy::too_many_arguments)]
 async fn cmd_list(
     cli: &Cli,
     status: Option<&str>,
     priority: Option<i32>,
     assignee: Option<&str>,
     label: Option<&str>,
+    team: Option<&str>,
+    project: Option<&str>,
+    cycle: Option<&str>,
     search: Option<&str>,
     all: bool,
 ) {
-    let (issues, _, is_json) = setup(cli).await;
+    let (issues, resolver, is_json) = setup(cli).await;
+
+    let (assignee_id, label_id, team_id, project_id, cycle_id) = tokio::join!(
+        resolve_filter_param(&resolver, ResolveKind::Members, cli, assignee, is_json),
+        resolve_filter_param(&resolver, ResolveKind::Labels, cli, label, is_json),
+        resolve_filter_param(&resolver, ResolveKind::Teams, cli, team, is_json),
+        resolve_filter_param(&resolver, ResolveKind::Projects, cli, project, is_json),
+        resolve_filter_param(&resolver, ResolveKind::Cycles, cli, cycle, is_json),
+    );
+
     let mut filter = IssueFilter::new();
     if let Some(s) = status {
         filter = filter.status(s);
@@ -131,11 +151,20 @@ async fn cmd_list(
     if let Some(p) = priority {
         filter = filter.priority(priority_from_int(p));
     }
-    if let Some(a) = assignee {
-        filter = filter.assignee(a);
+    if let Some(a) = assignee_id {
+        filter = filter.assignee(&a);
     }
-    if let Some(l) = label {
-        filter = filter.label(l);
+    if let Some(l) = label_id {
+        filter = filter.label(&l);
+    }
+    if let Some(t) = team_id {
+        filter = filter.team(&t);
+    }
+    if let Some(p) = project_id {
+        filter = filter.project(&p);
+    }
+    if let Some(c) = cycle_id {
+        filter = filter.cycle(&c);
     }
     if let Some(q) = search {
         filter = filter.search(q);
@@ -551,6 +580,41 @@ async fn cmd_sub_issues_create(
 }
 
 // ── resolution helpers ────────────────────────────────────────────
+
+/// Resolve a single filter parameter to UUID, with "me" alias support.
+async fn resolve_filter_param(
+    resolver: &Resolver,
+    kind: ResolveKind,
+    cli: &Cli,
+    value: Option<&str>,
+    is_json: bool,
+) -> Option<String> {
+    let value = value?;
+    // "me" alias for assignee / "me" 别名用于 assignee
+    if kind == ResolveKind::Members && value == "me" {
+        let (client, _url) = match crate::commands::resolve_client(cli).await {
+            Ok(c) => c,
+            Err(e) => output::print_string_error(&e, 2, is_json),
+        };
+        let user: UserResponse = match client.get("/api/auth/me").await {
+            Ok(u) => u,
+            Err(e) => {
+                output::print_error(&e, is_json);
+                std::process::exit(e.exit_code());
+            }
+        };
+        return Some(user.id);
+    }
+    // UUID passthrough / UUID 直通
+    if value.contains('-') && value.len() >= 32 {
+        return Some(value.to_string());
+    }
+    // Resolve via resolver / 通过 Resolver 解析
+    match resolver.resolve(kind, value).await {
+        Ok(id) => Some(id),
+        Err(e) => output::print_string_error(&e, 3, is_json),
+    }
+}
 
 /// Resolve a single optional name to an ID. UUIDs pass through.
 /// 将单个可选名称解析为 ID。UUID 直通。
