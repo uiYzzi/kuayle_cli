@@ -279,7 +279,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     // ── Teams ──────────────────────────────────────────────────
     ResourceSpec {
         name: "teams",
-        about: "Manage teams / 管理团队",
+        about: "Manage teams",
         path: "/api/workspaces/{ws}/teams",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -289,7 +289,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "projects",
-        about: "Manage projects / 管理项目",
+        about: "Manage projects",
         path: "/api/workspaces/{ws}/projects",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -299,7 +299,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "cycles",
-        about: "Manage cycles (read-only with PAT) / 管理周期（PAT 只读）",
+        about: "Manage cycles (read-only with PAT)",
         path: "/api/workspaces/{ws}/teams/{team}/cycles",
         id_kind: IdKind::CycleNumber,
         capabilities: Capabilities::READ_ONLY,
@@ -309,7 +309,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "templates",
-        about: "Manage issue templates / 管理 issue 模板",
+        about: "Manage issue templates",
         path: "/api/workspaces/{ws}/issue-templates",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::CRUD,
@@ -319,7 +319,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "views",
-        about: "Manage views (read-only with PAT) / 管理视图（PAT 只读）",
+        about: "Manage views (read-only with PAT)",
         path: "/api/workspaces/{ws}/views",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -329,7 +329,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "members",
-        about: "Manage workspace members / 管理工作区成员",
+        about: "Manage workspace members",
         path: "/api/workspaces/{ws}/members",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -339,7 +339,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "favorites",
-        about: "Manage favorites (read-only with PAT) / 管理收藏（PAT 只读）",
+        about: "Manage favorites (read-only with PAT)",
         path: "/api/workspaces/{ws}/favorites",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -349,7 +349,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "notifications",
-        about: "Manage notifications (read-only with PAT) / 管理通知（PAT 只读）",
+        about: "Manage notifications (read-only with PAT)",
         path: "/api/notifications",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::READ_ONLY,
@@ -359,7 +359,7 @@ pub static RESOURCES: &[ResourceSpec] = &[
     },
     ResourceSpec {
         name: "assets",
-        about: "Manage uploaded assets / 管理上传资源",
+        about: "Manage uploaded assets",
         path: "/api/workspaces/{ws}/assets",
         id_kind: IdKind::Uuid,
         capabilities: Capabilities::from_bits_truncate(

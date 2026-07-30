@@ -73,7 +73,6 @@ async fn cmd_login(cli: &Cli, token: Option<&str>) {
 
             if let Err(e) = save_profile_to_config(&profile, &url) {
                 eprintln!("Warning: could not save profile to config: {e}");
-                eprintln!("警告：无法保存 profile 到配置：{e}");
             }
 
             println!("✓ Logged in as {} ({})", user.display_name, user.email);
@@ -127,7 +126,6 @@ async fn cmd_status(cli: &Cli) {
                 std::process::exit(2);
             }
             println!("Not logged in. Run 'kuayle auth login' to authenticate.");
-            println!("未登录。运行 'kuayle auth login' 进行认证。");
             std::process::exit(2);
         }
         Err(e) => output::print_string_error(&format!("loading session: {e}"), 1, is_json),

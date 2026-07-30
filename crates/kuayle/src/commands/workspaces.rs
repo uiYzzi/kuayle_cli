@@ -36,7 +36,6 @@ async fn cmd_list(cli: &Cli) {
             } else {
                 if workspaces.is_empty() {
                     println!("No workspaces found.");
-                    println!("没有找到工作区。");
                     return;
                 }
                 println!("{:<40} {:<20} {:<15}", "NAME", "SLUG", "ROLE");

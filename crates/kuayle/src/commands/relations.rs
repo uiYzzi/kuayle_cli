@@ -57,7 +57,6 @@ async fn cmd_list(cli: &Cli, issue: &str) {
             } else {
                 if relations.is_empty() {
                     println!("No relations for issue {issue}.");
-                    println!("issue {issue} 没有关系。");
                     return;
                 }
                 println!(
@@ -106,7 +105,6 @@ async fn cmd_create(cli: &Cli, issue: &str, related: &str, relation_type: &str) 
                 );
             } else {
                 println!("✓ Created relation on issue {issue}");
-                println!("✓ 已在 issue {issue} 上创建关系");
                 println!(
                     "  {} → {} ({})",
                     issue, relation.related_issue_id, relation.relation_type
@@ -135,7 +133,6 @@ async fn cmd_delete(cli: &Cli, issue: &str, id: &str) {
                 println!(r#"{{"deleted":"{id}"}}"#);
             } else {
                 println!("✓ Deleted relation {id}");
-                println!("✓ 已删除关系 {id}");
             }
         }
         Err(e) => {

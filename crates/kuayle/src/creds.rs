@@ -173,7 +173,6 @@ pub fn get_credential_store() -> Result<Box<dyn CredentialStore>, String> {
             eprintln!(
                 "warning: OS keychain unavailable, falling back to file-based credential storage"
             );
-            eprintln!("警告：操作系统 keychain 不可用，降级为文件凭据存储");
             Ok(Box::new(FileCredentialStore::new()?))
         }
     }

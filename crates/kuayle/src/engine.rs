@@ -51,7 +51,6 @@ pub async fn execute_list(
 
     if items.is_empty() {
         println!("No {} found.", spec.name);
-        println!("没有找到 {}。", spec.name);
         return;
     }
 
@@ -96,7 +95,6 @@ pub async fn execute_list(
     let has_more = items.len() >= 100 && !all;
     if has_more {
         println!("… and more (use --all)");
-        println!("… 还有更多（使用 --all）");
     }
     println!("\n{} {} found", items.len(), spec.name);
 }

@@ -56,7 +56,6 @@ async fn cmd_list(cli: &Cli) {
             } else {
                 if labels.is_empty() {
                     println!("No labels found.");
-                    println!("没有找到标签。");
                     return;
                 }
                 println!("{:<40}  {:<25}  {:<15}", "NAME", "COLOR", "ID");
@@ -100,7 +99,6 @@ async fn cmd_create(cli: &Cli, name: &str, color: Option<&str>) {
             } else {
                 let color_display = label.color.as_deref().unwrap_or("-");
                 println!("✓ Created label \"{}\" ({color_display})", label.name);
-                println!("✓ 已创建标签 \"{}\" ({color_display})", label.name);
                 println!("  id: {}", label.id);
             }
         }
@@ -135,7 +133,6 @@ async fn cmd_update(cli: &Cli, id: &str, name: Option<&str>, color: Option<&str>
                 );
             } else {
                 println!("✓ Updated label \"{}\"", label.name);
-                println!("✓ 已更新标签 \"{}\"", label.name);
             }
         }
         Err(e) => {
@@ -159,7 +156,6 @@ async fn cmd_delete(cli: &Cli, id: &str) {
                 println!(r#"{{"deleted":"{id}"}}"#);
             } else {
                 println!("✓ Deleted label {id}");
-                println!("✓ 已删除标签 {id}");
             }
         }
         Err(e) => {

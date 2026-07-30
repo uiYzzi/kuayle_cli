@@ -1,11 +1,11 @@
 ---
 source: crates/kuayle/tests/golden.rs
+assertion_line: 18
 expression: stdout
 ---
 kuayle — CLI for the kuayle self-hosted issue tracker
-kuayle — 自托管 issue tracker kuayle 的命令行工具
 
-## Global Flags / 全局标志
+## Global Flags
 
   --profile <NAME>     Profile to use (env: KUAYLE_PROFILE)
   --url <URL>          Override instance URL (env: KUAYLE_URL)
@@ -13,13 +13,13 @@ kuayle — 自托管 issue tracker kuayle 的命令行工具
   --format human|json   Output format (default: auto-detect tty)
   --no-cache            Disable resolve disk cache (env: KUAYLE_NO_CACHE)
 
-## Authentication / 认证
+## Authentication
 
   kuayle auth login --token <PAT>     Login with Personal Access Token
   kuayle auth logout                   Remove stored credentials
   kuayle auth status                   Show authentication status
 
-## Commands / 命令
+## Commands
 
   kuayle auth login
   kuayle auth logout
@@ -37,9 +37,9 @@ kuayle — 自托管 issue tracker kuayle 的命令行工具
   kuayle issues unsubscribe
   kuayle issues history
   kuayle issues sub-issues-list
-    List sub-issues / 列出子 issue
+    List sub-issues
   kuayle issues sub-issues-create
-    Create a sub-issue / 创建子 issue
+    Create a sub-issue
   kuayle comments list
   kuayle comments create
   kuayle comments resolve
@@ -75,12 +75,12 @@ kuayle — 自托管 issue tracker kuayle 的命令行工具
   kuayle assets upload
   kuayle assets download
   kuayle usage
-    Show command reference / 显示命令参考
+    Show command reference
   kuayle completion
-    Generate shell completion script / 生成 shell 补全脚本
+    Generate shell completion script
   kuayle self-update
-    Check for updates or update the binary / 检查更新或更新二进制
-## Name Resolution / 名称解析
+    Check for updates or update the binary
+## Name Resolution
 
   Names accept: UUID (passthrough), human-readable name, or identifier.
   Names resolved via batch fetch + case-insensitive match.
@@ -88,24 +88,18 @@ kuayle — 自托管 issue tracker kuayle 的命令行工具
   Multiple names resolved in parallel (tokio::join!).
   On failure: lists available candidates, exit code 3.
 
-  名称接受：UUID（直通）、人类可读名称或 identifier。
-  名称通过批量抓取 + 大小写不敏感匹配解析。
-  进程内 memo + 磁盘缓存（5 分钟 TTL，--no-cache 可禁）。
-  多个名称并发解析（tokio::join!）。
-  失败时列出可用候选，退出码 3。
+## Exit Codes
 
-## Exit Codes / 退出码
+  0  Success
+  1  Generic error
+  2  Authentication failure
+  3  Resource not found
+  4  Validation error
+  5  Permission denied
+  6  Rate limited
+  7  Network / server unreachable
 
-  0  Success / 成功
-  1  Generic error / 未分类错误
-  2  Authentication failure / 认证失败
-  3  Resource not found / 资源未找到
-  4  Validation error / 参数校验失败
-  5  Permission denied / 权限不足
-  6  Rate limited / 被限流
-  7  Network / server unreachable / 网络/服务端不可达
-
-## Output Format / 输出格式
+## Output Format
 
   --format human   Human-readable tables and text (default when TTY).
   --format json    Machine-readable JSON.

@@ -14,7 +14,7 @@ pub struct Cli {
     pub workspace: Option<String>,
     #[arg(long, global = true, default_value = "auto")]
     pub format: String,
-    /// Disable resolve disk cache / 禁用解析磁盘缓存
+    /// Disable resolve disk cache
     #[arg(long, global = true, env = "KUAYLE_NO_CACHE")]
     pub no_cache: bool,
     #[command(subcommand)]
@@ -88,13 +88,13 @@ pub enum Command {
         #[command(subcommand)]
         action: AssetAction,
     },
-    /// Show command reference / 显示命令参考
+    /// Show command reference
     Usage,
-    /// Generate shell completion script / 生成 shell 补全脚本
+    /// Generate shell completion script
     Completion {
         shell: String,
     },
-    /// Check for updates or update the binary / 检查更新或更新二进制
+    /// Check for updates or update the binary
     SelfUpdate,
 }
 
@@ -120,7 +120,7 @@ pub enum IssueAction {
         status: Option<String>,
         #[arg(long)]
         priority: Option<i32>,
-        /// Assignee email, name, UUID, or "me" / 指派人邮箱、名称、UUID 或 "me"
+        /// Assignee email, name, UUID, or "me"
         #[arg(long)]
         assignee: Option<String>,
         #[arg(long)]
@@ -156,7 +156,7 @@ pub enum IssueAction {
         project: Option<String>,
         #[arg(long)]
         cycle: Option<String>,
-        /// Parent issue identifier (e.g. ENG-25) / 父 issue identifier
+        /// Parent issue identifier (e.g. ENG-25)
         #[arg(long)]
         parent: Option<String>,
     },
@@ -174,7 +174,7 @@ pub enum IssueAction {
         assignee: Option<Vec<String>>,
         #[arg(long)]
         labels: Option<Vec<String>>,
-        /// Parent issue identifier / 父 issue identifier
+        /// Parent issue identifier
         #[arg(long)]
         parent: Option<String>,
     },
@@ -200,11 +200,11 @@ pub enum IssueAction {
     History {
         identifier: String,
     },
-    /// List sub-issues / 列出子 issue
+    /// List sub-issues
     SubIssuesList {
         identifier: String,
     },
-    /// Create a sub-issue / 创建子 issue
+    /// Create a sub-issue
     SubIssuesCreate {
         identifier: String,
         #[arg(long)]
@@ -279,7 +279,6 @@ pub enum LabelAction {
 // M3 资源 action 枚举
 
 /// Team actions: list teams, read a single team.
-/// 团队操作：列出团队、读取单个团队。
 #[derive(Subcommand, Debug, Clone)]
 pub enum TeamAction {
     List,
@@ -287,14 +286,12 @@ pub enum TeamAction {
 }
 
 /// Statuses actions: list statuses for a team.
-/// 状态操作：列出团队的状态。
 #[derive(Subcommand, Debug, Clone)]
 pub enum StatusesAction {
     List { team: String },
 }
 
 /// Project actions: list projects, read a single project.
-/// 项目操作：列出项目、读取单个项目。
 #[derive(Subcommand, Debug, Clone)]
 pub enum ProjectAction {
     List,
@@ -302,12 +299,10 @@ pub enum ProjectAction {
 }
 
 /// Cycle actions: list, read, burndown, velocity (read-only).
-/// 周期操作：list、read、burndown、velocity（只读）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum CycleAction {
     List {
         /// Team ID or key (required — cycles are scoped to a team).
-        /// 团队 ID 或 key（必填 — 周期限定在团队范围内）。
         #[arg(long = "team")]
         team: String,
     },
@@ -328,7 +323,6 @@ pub enum CycleAction {
 }
 
 /// Template actions: full CRUD for issue templates.
-/// 模板操作：issue 模板的完整 CRUD。
 #[derive(Subcommand, Debug, Clone)]
 pub enum TemplateAction {
     List,
@@ -358,7 +352,6 @@ pub enum TemplateAction {
 }
 
 /// View actions: list views, read a single view (read-only).
-/// 视图操作：列出视图、读取单个视图（只读）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum ViewAction {
     List,
@@ -366,28 +359,24 @@ pub enum ViewAction {
 }
 
 /// Member actions: list workspace members (read-only).
-/// 成员操作：列出工作区成员（只读）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum MemberAction {
     List,
 }
 
 /// Favorite actions: list workspace favorites (read-only).
-/// 收藏操作：列出工作区收藏（只读）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum FavoriteAction {
     List,
 }
 
 /// Notification actions: list user notifications (read-only, user-scoped).
-/// 通知操作：列出用户通知（只读，用户范围）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum NotificationAction {
     List,
 }
 
 /// Asset actions: read asset info, upload file (upload is a placeholder).
-/// 附件操作：读取附件信息、上传文件（上传为占位）。
 #[derive(Subcommand, Debug, Clone)]
 pub enum AssetAction {
     List,

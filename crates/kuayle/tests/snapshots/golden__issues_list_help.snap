@@ -9,11 +9,11 @@ Options:
       --status <STATUS>        
       --priority <PRIORITY>    
       --url <URL>              [env: KUAYLE_URL=]
-      --assignee <ASSIGNEE>    Assignee email, name, UUID, or "me" / 指派人邮箱、名称、UUID 或 "me"
+      --assignee <ASSIGNEE>    Assignee email, name, UUID, or "me"
       --workspace <WORKSPACE>  [env: KUAYLE_WORKSPACE=]
       --format <FORMAT>        [default: auto]
       --label <LABEL>          
-      --no-cache               Disable resolve disk cache / 禁用解析磁盘缓存 [env: KUAYLE_NO_CACHE=]
+      --no-cache               Disable resolve disk cache [env: KUAYLE_NO_CACHE=]
       --team <TEAM>            
       --project <PROJECT>      
       --cycle <CYCLE>          

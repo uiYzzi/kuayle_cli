@@ -73,7 +73,6 @@ pub fn print_table<T: Serialize>(
         Format::Human => {
             if items.is_empty() {
                 println!("No items found.");
-                println!("没有找到项目。");
                 return;
             }
 
@@ -119,7 +118,6 @@ pub fn print_error(err: &kuayle_sdk::error::KuayleError, is_json: bool) {
         println!("{}", err.to_json_error());
     } else {
         eprintln!("Error: {err}");
-        eprintln!("错误：{err}");
     }
 }
 
@@ -133,7 +131,6 @@ pub fn print_string_error(msg: &str, exit_code: i32, is_json: bool) -> ! {
         );
     } else {
         eprintln!("Error: {msg}");
-        eprintln!("错误：{msg}");
     }
     std::process::exit(exit_code);
 }
