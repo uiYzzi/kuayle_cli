@@ -74,7 +74,10 @@ async fn get_sends_user_agent() {
 
     Mock::given(method("GET"))
         .and(path("/api/auth/me"))
-        .and(header("User-Agent", "kuayle-sdk/0.1.0"))
+        .and(header(
+            "User-Agent",
+            concat!("kuayle-sdk/", env!("CARGO_PKG_VERSION")),
+        ))
         .respond_with(ResponseTemplate::new(200).set_body_json(user_json()))
         .mount(&server)
         .await;
